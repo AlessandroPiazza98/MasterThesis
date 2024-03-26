@@ -1,0 +1,226 @@
+<mxfile host="app.diagrams.net" modified="2023-12-19T08:41:25.535Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0" etag="hYIOCYK3IL4wnQ5-IAq6" version="22.1.11" type="device">
+  <diagram name="Pagina-1" id="3PtW7-VGjUTILCpxzXTn">
+    <mxGraphModel dx="2310" dy="2491" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-33" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 8;strokeWidth=4;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="50" y="-90" width="1530" height="1210" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="GyN-w8sCTrr9iiZdXNxG-1" target="dIRhJJlyKmFdS2JaV8jR-11" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-1" value="Spatial Temporal Graph Convolutional Networks for Skeleton-Based Action Recognition" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="130" y="180" width="360" height="140" as="geometry">
+            <mxRectangle x="130" y="190" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-2" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-1" vertex="1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-3" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-1" vertex="1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-4" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-1" vertex="1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="GyN-w8sCTrr9iiZdXNxG-5" target="dIRhJJlyKmFdS2JaV8jR-11" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="370" />
+              <mxPoint x="1220" y="370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-5" value="Skeleton-based Action Recognition via Spatial and Temporal Transformer Networks" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="130" y="410" width="360" height="140" as="geometry">
+            <mxRectangle x="300" y="230" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-6" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-5" vertex="1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-7" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-5" vertex="1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-8" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-5" vertex="1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-9" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="GyN-w8sCTrr9iiZdXNxG-1" target="GyN-w8sCTrr9iiZdXNxG-5" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="290" y="400" as="sourcePoint" />
+            <mxPoint x="340" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="GyN-w8sCTrr9iiZdXNxG-10" target="GyN-w8sCTrr9iiZdXNxG-5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="GyN-w8sCTrr9iiZdXNxG-10" target="dIRhJJlyKmFdS2JaV8jR-11" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-10" value="Two-Stream Adaptive Graph Convolutional Networks for Skeleton-Based Action Recognition" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="670" y="410" width="360" height="140" as="geometry">
+            <mxRectangle x="300" y="230" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-11" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-10" vertex="1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-12" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-10" vertex="1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-13" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-10" vertex="1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="GyN-w8sCTrr9iiZdXNxG-15" target="dIRhJJlyKmFdS2JaV8jR-11" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-15" value="Realtime Multi-Person 2D Pose Estimation using Part Affinity Fields" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1040" y="-35" width="360" height="140" as="geometry">
+            <mxRectangle x="130" y="190" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-16" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-15" vertex="1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-17" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-15" vertex="1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="GyN-w8sCTrr9iiZdXNxG-18" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="GyN-w8sCTrr9iiZdXNxG-15" vertex="1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="dIRhJJlyKmFdS2JaV8jR-1" target="GyN-w8sCTrr9iiZdXNxG-10" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="dIRhJJlyKmFdS2JaV8jR-1" target="GyN-w8sCTrr9iiZdXNxG-5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="dIRhJJlyKmFdS2JaV8jR-1" target="dIRhJJlyKmFdS2JaV8jR-11" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1220" y="750" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="dIRhJJlyKmFdS2JaV8jR-1" target="dIRhJJlyKmFdS2JaV8jR-26" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wU84Tb7OZQlk_FPAgTOE-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="dIRhJJlyKmFdS2JaV8jR-1" target="wU84Tb7OZQlk_FPAgTOE-1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-1" value="Transformer for Skeleton-Based action recognition: A review of recent advances" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="340" y="710" width="360" height="140" as="geometry">
+            <mxRectangle x="300" y="230" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-2" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-1" vertex="1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-3" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-1" vertex="1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-4" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-1" vertex="1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;shape=flexArrow;" parent="1" source="dIRhJJlyKmFdS2JaV8jR-7" target="SjDobf8rBD3kRahzkNSC-1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1910" y="60" />
+              <mxPoint x="1888" y="60" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-38" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;shape=flexArrow;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" source="dIRhJJlyKmFdS2JaV8jR-7" target="wU84Tb7OZQlk_FPAgTOE-1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1910" y="810" />
+              <mxPoint x="1170" y="810" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-7" value="EgoGesture: A new dataset and benchmark for egocentric hand gesture recognition" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="1730" y="430" width="360" height="170" as="geometry">
+            <mxRectangle x="300" y="230" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-35" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-7" vertex="1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-8" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-7" vertex="1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-9" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-7" vertex="1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-10" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-7" vertex="1">
+          <mxGeometry y="140" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="dIRhJJlyKmFdS2JaV8jR-11" target="GyN-w8sCTrr9iiZdXNxG-15" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-11" value="The Kinetics human action video dataset" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1040" y="180" width="360" height="140" as="geometry">
+            <mxRectangle x="300" y="230" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-12" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-11" vertex="1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-13" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-11" vertex="1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-14" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-11" vertex="1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-26" value="Attention is all you need" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="340" y="900" width="360" height="140" as="geometry">
+            <mxRectangle x="300" y="230" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-27" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-26" vertex="1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-28" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-26" vertex="1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-29" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="dIRhJJlyKmFdS2JaV8jR-26" vertex="1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dIRhJJlyKmFdS2JaV8jR-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;shape=flexArrow;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" source="dIRhJJlyKmFdS2JaV8jR-33" target="dIRhJJlyKmFdS2JaV8jR-7" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wU84Tb7OZQlk_FPAgTOE-1" value="UNIK: A unified framework for real-world skelton-based action recognition" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="990" y="840" width="360" height="140" as="geometry">
+            <mxRectangle x="300" y="230" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wU84Tb7OZQlk_FPAgTOE-2" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="wU84Tb7OZQlk_FPAgTOE-1" vertex="1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="wU84Tb7OZQlk_FPAgTOE-3" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="wU84Tb7OZQlk_FPAgTOE-1" vertex="1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="wU84Tb7OZQlk_FPAgTOE-4" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="wU84Tb7OZQlk_FPAgTOE-1" vertex="1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SjDobf8rBD3kRahzkNSC-1" value="AssemblyHands:&lt;br/&gt;Towards Egocentric Activity Understanding via 3D Hand Pose Estimation" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=50;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1740" y="-30" width="360" height="140" as="geometry">
+            <mxRectangle x="300" y="230" width="440" height="190" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SjDobf8rBD3kRahzkNSC-2" value="Item 1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="SjDobf8rBD3kRahzkNSC-1">
+          <mxGeometry y="50" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SjDobf8rBD3kRahzkNSC-3" value="Item 2" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="SjDobf8rBD3kRahzkNSC-1">
+          <mxGeometry y="80" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SjDobf8rBD3kRahzkNSC-4" value="Item 3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="SjDobf8rBD3kRahzkNSC-1">
+          <mxGeometry y="110" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SjDobf8rBD3kRahzkNSC-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="SjDobf8rBD3kRahzkNSC-2" target="GyN-w8sCTrr9iiZdXNxG-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
