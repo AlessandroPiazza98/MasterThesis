@@ -1,2 +1,2 @@
 # MasterThesis
-Repository for the expriments of my Master Thesis
+Repository with the expriments of my Master Thesis
