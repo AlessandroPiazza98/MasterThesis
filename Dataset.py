@@ -211,7 +211,7 @@ elif args.dataset=="NTU":
         transform=T.Compose([
             T.Denoise(),
             T.CenterJoint(),
-            T.SplitFrames(),
+            T.SelectKBodies(1),
             NTUConvToPyG()
         ]),
     )
@@ -246,7 +246,6 @@ print("Total Dataset[0] node features: "+str(Dataset[0].num_edge_features))
 print("Dataset[0] have isolated nodes: "+str(Dataset[0].has_isolated_nodes()))
 print("Dataset[0] have self loops: "+str(Dataset[0].has_self_loops()))
 print("Dataset[0] is a directed graph: "+str(Dataset[0].is_directed()))
-
 
 with open(args.pkl_path+'/'+args.dataset+str(args.classes)+"_"+args.split+"_"+args.data_size+".pkl", 'wb') as file:
     pickle.dump(Dataset, file)
