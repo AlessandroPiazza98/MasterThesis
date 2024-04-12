@@ -7,13 +7,10 @@ import torch.nn.functional as F
 from torch.nn import Sequential as Seq
 from torch.nn import Linear as Lin
 from torch.nn import ReLU
-
+from Models import * # type: ignore
 
 #PyTorch_Geometric Utilities
 from torch_geometric.loader import  DataLoader
-from torch_geometric.nn import GENConv, global_mean_pool, SAGPooling, GraphConv, TopKPooling, global_add_pool, MemPooling
-from torch_geometric.nn import global_max_pool as gmp
-from torch_geometric.nn import global_mean_pool as gap
 from Utils.class_balanced_loss import BalancedLoss
 
 #SkLearn Utilities
@@ -75,119 +72,6 @@ print()
 
 #Starting Graph Convolutional Network with GENConv layers
 
-class Pool(torch.nn.Module):
-    def __init__(self, in_dim, out_dim, edge_dim, dropout=0.2):
-        super().__init__()
-        self.conv1 = GENConv(in_dim, 256, edge_dim=edge_dim)
-        self.pool1 = TopKPooling(256, ratio=0.5)
-
-        self.conv2 = GENConv(256, 128, edge_dim=edge_dim)
-        self.pool2 = TopKPooling(128, ratio=0.5)
-
-        self.conv3 = GENConv(128, 64, edge_dim=edge_dim)
-        self.pool3 = TopKPooling(64, ratio=0.5)
-
-        self.conv4 = GENConv(64, 64, edge_dim=edge_dim)
-        self.pool4 = TopKPooling(64, ratio=0.8)
-
-        self.conv5 = GENConv(64, 64, edge_dim=edge_dim)
-        self.pool5 = TopKPooling(64, ratio=0.8)
-
-        self.lin1 = torch.nn.Linear(128, 128)
-        self.lin2 = torch.nn.Linear(128, 64)
-        self.lin3 = torch.nn.Linear(64, out_dim)
-
-    
-
-    def forward(self, x, edge_index, edge_attr, batch):
-        
-        print(f'Start {x.shape}')
-        x = F.relu(self.conv1(x, edge_index))
-        print(f'Conv1 {x.shape}')
-
-        x, edge_index, _, batch, _, _ = self.pool1(x, edge_index, None, batch)
-        print(f'Pool1 {x.shape}')
-
-        x = F.relu(self.conv2(x, edge_index))
-        print(f'Conv2 {x.shape}')
-
-        x, edge_index, _, batch, _, _ = self.pool2(x, edge_index, None, batch)
-        print(f'Pool2 {x.shape}')
-
-        x = F.relu(self.conv3(x, edge_index))
-        print(f'Conv3 {x.shape}')
-
-        x, edge_index, _, batch, _, _ = self.pool3(x, edge_index, None, batch)
-        print(f'Pool3 {x.shape}')
-
-        x1 = torch.cat([gmp(x, batch), gap(x, batch)], dim=1)
-        print(f'x1 {x1.shape}')
-
-        x = F.relu(self.conv4(x, edge_index))
-        print(f'Conv4 {x.shape}')
-
-        x, edge_index, _, batch, _, _ = self.pool4(x, edge_index, None, batch)
-        print(f'Pool4 {x.shape}')
-
-        x2 = torch.cat([gmp(x, batch), gap(x, batch)], dim=1)
-        print(f'x2 {x2.shape}')
-
-        x = F.relu(self.conv5(x, edge_index))
-        print(f'Conv5 {x.shape}')
-
-        x, edge_index, _, batch, _, _ = self.pool5(x, edge_index, None, batch)
-        print(f'Pool5 {x.shape}')
-
-        x3 = torch.cat([gmp(x, batch), gap(x, batch)], dim=1)
-        print(f'x3 {x3.shape}')
-
-        x = x1 + x2 + x3
-        print(f'x1+x2+x3 {x.shape}')
-
-        x = F.relu(self.lin1(x))
-        print(f'Lin1 {x.shape}')
-
-        x = F.dropout(x, p=0.5, training=self.training)
-        print(f'Dropout {x.shape}')
-
-        x = F.relu(self.lin2(x))
-        print(f'Lin2 {x.shape}')
-
-        x = F.log_softmax(self.lin3(x), dim=-1)
-        print(f'Lin3 {x.shape}\n')
-
-        return x
-
-class GCN(torch.nn.Module):
-    def __init__(self, in_dim, out_dim, edge_dim, dropout=0.2):
-        super().__init__()
-        self.dropout = dropout
-        self.conv1 = GENConv(in_dim, 64, edge_dim=edge_dim)
-        self.conv2 = GENConv(64, 64, edge_dim=edge_dim)
-        self.conv3 = GENConv(64, 128, edge_dim=edge_dim)
-        self.dense1 = nn.Linear(128, 64)
-        self.dense2 = nn.Linear(64, out_dim)
-
-    
-
-    def forward(self, x, edge_index, edge_attr, batch):
-        
-        x = self.conv1(x, edge_index, edge_attr)
-        x = x.relu()
-        x = self.conv2(x, edge_index, edge_attr)
-        x = x.relu()
-        x = self.conv3(x, edge_index, edge_attr)
-        x = x.relu()
-        
-        # Perform global mean pooling
-        x = global_mean_pool(x, batch)
-        
-        x = F.dropout(x, p=self.dropout)
-        x = self.dense1(x)
-        x = self.dense2(x)
-        x = torch.log_softmax(x, dim=-1)
-        return x
-
 #Main
 if __name__ == "__main__":
     #Set values according to Parser arguments
@@ -202,7 +86,6 @@ if __name__ == "__main__":
     results_path=args.results_path
     wandb_key = args.wandb_key
     model_key = args.model
-
 
     tz = datetime.timezone.utc
     ft = "%Y-%m-%dT%H:%M:%S%z"
@@ -300,9 +183,7 @@ if __name__ == "__main__":
     class_w = torch.Tensor([x/sum(class_freq) for x in class_freq]).to(device)
 
     # Define your model and optimizer
-    MODELS_MAP = {'GCN':GCN(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device),
-                  'Pool':Pool(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device)}
-
+    MODELS_MAP = models_map(input_dim, output_dim, edge_dim, device) # type: ignore
     model = MODELS_MAP[model_key]
     optimizer = torch.optim.Adam(model.parameters(), lr=0.008)
 
@@ -310,6 +191,28 @@ if __name__ == "__main__":
         criterion = torch.nn.CrossEntropyLoss(class_w)
     else:
         criterion = torch.nn.CrossEntropyLoss()
+
+    print("Start debug")
+    if args.debug:
+        model_debug = MODELS_MAP[model_key]
+        optimizer = torch.optim.Adam(model_debug.parameters(), lr=0.008)
+        model_debug.train()
+        data = next(iter(train_loader))
+        print(data) # Iterate in batches over the training dataset.  
+        optimizer.zero_grad()  # Clear gradients.
+        data = data.to(device)
+        out = model_debug(data.x, data.edge_index, data.edge_attr, data.batch, debug=args.debug)
+        print(args.debug) # Perform a single forward pass.
+        #loss_func = BalancedLoss(samples_per_cls=class_freq, no_of_classes=classes,
+        #                     loss_type='cross-entropy', beta=0.99, gamma=0.5, device=device, label_smoothing=0.0) #TODO Debug dimensions
+        #print(out.shape)
+        #print(data.y.shape)
+        loss = criterion(out, data.y)  # Compute the loss.
+        loss.backward()  # Derive gradients.
+        optimizer.step()  # Update parameters based on gradients.
+        torch.cuda.empty_cache()
+    print("End debug")
+
 
     print("Model Configuration:")
     print(model)
@@ -341,7 +244,7 @@ if __name__ == "__main__":
         conf_matr = np.zeros((len(labels), len(labels)))
         for data in loader:  # Iterate in batches over the training/test dataset.
             data = data.to(device)
-            out = model(data.x, data.edge_index, data.edge_attr, data.batch, False)  
+            out = model(data.x, data.edge_index, data.edge_attr, data.batch)  
             loss = criterion(out, data.y)
             loss_ += loss.item()
             pred = out.argmax(dim=1)  # Use the class with highest probability.
