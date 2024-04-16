@@ -23,7 +23,9 @@ import wandb #To export results on wandb platform through an API key
 import os #System 
 import datetime #TODO To keep track of computational times
 from itertools import groupby #Utilities to make group opeations
+from sklearn.utils.class_weight import compute_class_weight
 
+from PytorchDataset import SkeletalDataset
 os.environ["WANDB_SILENT"] = "true" #Don't want the classical verbose output of wandb
 
 
@@ -31,17 +33,18 @@ os.environ["WANDB_SILENT"] = "true" #Don't want the classical verbose output of 
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--dataset", type=str, default="Babel") #The dataset considered for the computations Babel/NTU
 parser.add_argument("-c", "--classes", type=str, default=60) #The number of classes to consider 60/120
-parser.add_argument("-dt", "--data_size", type=str, default="Medium") #The dataset size to consider Small/Medium/Full
-parser.add_argument("-dp", "--data_path", type=str, default="/data03/Users/Alessandro/Data/") #Path to the folder with the pickle files
+parser.add_argument("-dt", "--data_size", type=str, default="Full") #The dataset size to consider Small/Medium/Full
+parser.add_argument("-dp", "--data_path", type=str, default="/home/jacopo/data/motion") #Path to the folder with the pickle files
 parser.add_argument("-e", "--epochs", type=int, default=100) #Number of epochs
 parser.add_argument("-dv", "--device", type=str, default="auto") #Type of device auto/cpu/cuda
 parser.add_argument("-pt", "--train_test", type=float, default=0.7) #TODO Split of training and Test samples (must be removed) 
-parser.add_argument("-bc", "--batch_size", type=int, default=32) #Batchsize considered (high vakues can give memory issue)
+parser.add_argument("-bc", "--batch_size", type=int, default=64) #Batchsize considered (high vakues can give memory issue)
 parser.add_argument('-debug', action='store_true') #Activate debug mode that prints some useful information
 parser.add_argument("-tk", "--top_k", type=int, default=5) #Number of K considered for the computation of top K accuracy
-parser.add_argument("-rp", "--results_path", type=str, default="/home/ale_piazza/MasterThesis/Plot") #Path in which plots are exported
+parser.add_argument("-rp", "--results_path", type=str, default="/home/jacopo/PycharmProjects/MasterThesis/Plot") #Path in which plots are exported
 parser.add_argument("-wk", "--wandb_key", type=str, default="") #API key for wandb. If not inserted nothing is exported.
 parser.add_argument('-m', "--model", type=str, default="GCN") #Model to consider: the string must match with one of the keys of Models.models_map
+parser.add_argument("-lr", "--lr", type=float, default=0.0001)
 
 args = parser.parse_args() #Initialize parser
 
@@ -59,7 +62,8 @@ print(tabulate.tabulate([
                 ["Top_K", args.top_k],  
                 ["Results Path",args.results_path], 
                 ["Wandb API",args.wandb_key!=""],
-                ["Model",args.model],                               
+                ["Model",args.model],
+                ["Lr",args.lr],
                 ], headers=['Argument', 'Value']))
 print()
 
@@ -91,7 +95,7 @@ if __name__ == "__main__":
         wandb.login(key=args.wandb_key) #Login on wnadb thorugh API key parsed
         wandb.init(
             #Set the wandb project where this run will be logged
-            project="Master Thesis",
+            project="Alessandro Piazza: Master Thesis",
             name=model_key+"_"+args.dataset+str(classes)+"_"+args.data_size+"_"+now, #The name depends on the model/classes/size considered and uses the datetime as key
             #Track hyperparameters and run metadata
             config={
@@ -115,20 +119,16 @@ if __name__ == "__main__":
 
     #Load Training Set from pickle file
     print("\nLoading dataset from "+train_path)
-    with open(train_path, 'rb') as file:
-            train_dataset = pickle.load(file)
+    train_dataset = SkeletalDataset(args.dataset, args.data_size, args.classes, "train", None, root_dir=args.data_path)
     print("Dataset "+args.dataset+str(classes)+"_"+args.data_size+" is ready\n")
 
     #Load Test Set from pickle file
-    print("\nLoading dataset from "+test_path)
-    with open(test_path, 'rb') as file:
-            test_dataset = pickle.load(file)
-    print("Dataset "+args.dataset+str(classes)+"_"+args.data_size+" is ready\n")
+    #test_dataset = SkeletalDataset(args.dataset, args.data_size, args.classes, "test", None, root_dir=args.data_path)
+    #print("Dataset "+args.dataset+str(classes)+"_"+args.data_size+" is ready\n")
 
     #Load Validation Set from pickle file
     print("\nLoading dataset from "+val_path)
-    with open(val_path, 'rb') as file:
-            val_dataset = pickle.load(file)
+    test_dataset = SkeletalDataset(args.dataset, args.data_size, args.classes, "val", None, root_dir=args.data_path)
     print("Dataset "+args.dataset+str(classes)+"_"+args.data_size+" is ready\n")
 
     #If in debug mode, print the shape and the cardinalities of the first graph of each dataset 
@@ -137,51 +137,56 @@ if __name__ == "__main__":
         "Information about first observation of the training set:"
         debug(train_dataset)
         "Information about first observation of the test set:"
-        debug(test_dataset)
+        #debug(test_dataset)
         "Information about first observation of the validation set:"
-        debug(val_dataset)
+        debug(test_dataset)
 
-    #Split the data TODO behaviour to remove to consider the direct dataset samples
-    N_th_train_test = int(len(train_dataset)*perc_train)
 
     #TODO keep also attention val/test names and definitions, actually perc_train% of train_dataset is the Training, the reamining % is the Validation and val_dataset becomes the Test
-    train_loader = DataLoader(train_dataset[:N_th_train_test], batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(train_dataset[N_th_train_test:], batch_size=batch_size, shuffle=True)
+    train_dataset, val_dataset = torch.utils.data.random_split(train_dataset, [perc_train, 1-perc_train], generator=torch.Generator().manual_seed(42))
+
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     #test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False) 
-    test_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, )
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=False )
 
     #Dimensions considered by the model
     input_dim = train_dataset[0].num_node_features #Number of features for each node
     edge_dim = train_dataset[0].num_edge_features #Number of features for each edge
     output_dim = classes #Number of classes 
     labels = list(range(0,output_dim)) #Assigning a numerical label for each class
-    class_freq = []
- 
-    #Compute the weight that must be considered by the loss function for each class
-    for i in range(0, len(train_dataset)):
-         class_freq.append(train_dataset[i].y)
-    #Compute how frequent is each class
-    class_f = [len(list(group)) for key, group in groupby(sorted(class_freq))]
-    class_w = torch.Tensor([x/sum(class_f) for x in class_freq]).to(device)
 
-    #If in debug mode, print the dicionaris of frequencies and weights
-    if args.debug:
-            class_keys = [key.numpy()[0] for key, group in groupby(sorted(class_freq))]
-            freq_dict = dict(zip(class_keys, class_f))
-            weight_dict = dict(zip(class_keys, class_w))
-            print("Dictionary of class freqeuencies in Training Set:")
-            print(freq_dict)
-            print("\nDictionary of class weights in Training Set:")
-            print(freq_dict)
+    file_path = './class_weights.npy'
+    if not os.path.exists(file_path):
+
+        class_freq = []
+
+        print("Computing class frequencies...")
+        #Compute the weight that must be considered by the loss function for each class
+        for i in range(0, len(train_dataset)):
+            y = train_dataset[i].y
+            class_freq.append(y.item())
+
+
+
+        print("Computing and saving class weights...")
+        class_w = compute_class_weight(class_weight="balanced", classes=np.unique(class_freq), y=class_freq)
+
+        with open(file_path, 'wb') as f:
+            np.save(f, class_w)
+    else:
+        class_w = np.load(file_path, allow_pickle=False)
+
 
     #Define your model and optimizer, taking the model from the models_map dictionary on Models.py 
     MODELS_MAP = models_map(input_dim, output_dim, edge_dim, device) # type: ignore
     model = MODELS_MAP[model_key]
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.008) #TODO go in deeper details for optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr) #TODO go in deeper details for optimizer
 
     #Select weighted Cross Entropy Loss only if size is Full to avoid mismathc in the number of labels
     if args.data_size =="Full":
-        criterion = torch.nn.CrossEntropyLoss(class_w)
+        criterion = torch.nn.CrossEntropyLoss(torch.from_numpy(class_w).float().to(device))
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
@@ -219,7 +224,7 @@ if __name__ == "__main__":
             loss = criterion(out, data.y)  # Compute the loss.
             loss.backward()  #Derive gradients.
             optimizer.step()  #Update parameters based on gradients.
-            torch.cuda.empty_cache()
+            #torch.cuda.empty_cache()
 
     #Test function
     def test(loader, labels,k):
@@ -250,6 +255,7 @@ if __name__ == "__main__":
     val_loss_val = []
     train_top_k_val = []
     val_top_k_val = []
+
     #STart iterations thourgh epochs
     for epoch in range(1,num_epochs+1):
         #Train the model
@@ -267,7 +273,6 @@ if __name__ == "__main__":
         train_top_k_val.append(train_top_k)
         val_top_k_val.append(val_top_k)
 
-        torch.cuda.empty_cache()
 
         #Print a summary tables of the epoch
         print(tabulate.tabulate([

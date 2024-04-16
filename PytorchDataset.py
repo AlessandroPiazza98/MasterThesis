@@ -22,7 +22,6 @@ class BabelConvToPyG:
     def __call__(self, x):
         kpts = 25
         frames = 150
-        print(x.shape)
 
         # Spatial edges according to kpts
         # sp_start_i=[1,1,1,2,2,3,3,4,5,5,7,7,8,8,8,9,9,10,10,11,11,12,12,12,13,13,14,14,15,15,16,17,17,18,18,19,19,20,21,21,21,21,22,23,24,25]
@@ -214,108 +213,6 @@ class SkeletalDataset(Dataset):
         data.y = torch.tensor([y])
 
         return data
-
-
-
-if __name__ == "__main__":
-
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataset", type=str, default="Babel")
-    parser.add_argument("-c", "--classes", type=str, default=60)
-    parser.add_argument("-dt", "--data_size", type=str, default="Medium")
-    parser.add_argument("-sp", "--split", type=str, default="test")
-    parser.add_argument("-dp", "--data_path", type=str, default="/home/jacopo/data/motion")
-    parser.add_argument("-pp", "--pkl_path", type=str, default="/home/jacopo/data/APiazza/Data")
-    parser.add_argument("-et", "--eval_type", type=str, default="subject")
-
-
-    args = parser.parse_args()
-
-
-    # download ntu skeleton dataset
-    if args.dataset=="Babel":
-
-        # download babel skeleton dataset
-        babel = BABEL(
-            root=args.data_path,
-            num_classes=int(args.classes),
-            split=args.split,
-            transform=T.Compose([
-                T.Denoise(),
-                T.CenterJoint(),
-                T.SplitFrames(),
-                BabelConvToPyG()
-            ]),
-        )
-
-
-        #Create an array with the first N instances in Data format
-        Dataset = []
-
-        if args.data_size=="Full":
-            N=len(babel)
-        elif args.data_size=="Medium":
-            N=2000
-        elif args.data_size=="Small":
-            N=200
-
-        perc_print = np.linspace(1, N, 100).astype(int)
-        for i in range(N):
-            data, y = babel[i]
-            data.y = torch.tensor([y])
-            Dataset.append(data)
-            if i in perc_print:
-                print(str(int(100*i/N))+"% of data pre-processing")
-
-    elif args.dataset=="NTU":
-        # download babel skeleton dataset
-        ntu = NTU(
-            root=args.data_path,
-            num_classes=int(args.classes),
-            eval_type=args.eval_type,
-            split=args.split,
-            transform=T.Compose([
-                T.Denoise(),
-                T.CenterJoint(),
-                T.SelectKBodies(1),
-                NTUConvToPyG()
-            ]),
-        )
-
-
-        #Create an array with the first N instances in Data format
-        Dataset = []
-
-        if args.data_size=="Full":
-            N=len(ntu)
-        elif args.data_size=="Medium":
-            N=2000
-        elif args.data_size=="Small":
-            N=200
-
-        perc_print = np.linspace(1, N, 100).astype(int)
-        for i in range(N):
-            data, y = ntu[i]
-            data.y = torch.tensor([y])
-            Dataset.append(data)
-            if i in perc_print:
-                print(str(int(100*i/N))+"% of data pre-processing")
-
-    #Make a group of checks on the first graph
-    print("The dataset "+args.dataset+str(args.classes)+"_"+args.split+"_"+args.data_size+" is imported and pre-processed")
-    Dataset[0].validate(raise_on_error=True)
-    print("Dataset[0] shape: "+str(Dataset[0]))
-    print("Total Dataset[0] nodes: "+str(Dataset[0].num_nodes))
-    print("Total Dataset[0] edges: "+str(Dataset[0].num_edges))
-    print("Total Dataset[0] node features: "+str(Dataset[0].num_node_features))
-    print("Total Dataset[0] edge features: "+str(Dataset[0].num_edge_features))
-    print("Dataset[0] have isolated nodes: "+str(Dataset[0].has_isolated_nodes()))
-    print("Dataset[0] have self loops: "+str(Dataset[0].has_self_loops()))
-    print("Dataset[0] is a directed graph: "+str(Dataset[0].is_directed()))
-
-    with open(args.pkl_path+'/'+args.dataset+str(args.classes)+"_"+args.split+"_"+args.data_size+".pkl", 'wb') as file:
-        pickle.dump(Dataset, file)
 
 
 
