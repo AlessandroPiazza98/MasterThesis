@@ -24,6 +24,7 @@ import os #System
 import datetime #TODO To keep track of computational times
 from itertools import groupby #Utilities to make group opeations
 from sklearn.utils.class_weight import compute_class_weight
+import torch_geometric.transforms as T
 
 from PytorchDataset import SkeletalDataset
 os.environ["WANDB_SILENT"] = "true" #Don't want the classical verbose output of wandb
@@ -35,10 +36,10 @@ parser.add_argument("-d", "--dataset", type=str, default="Babel") #The dataset c
 parser.add_argument("-c", "--classes", type=str, default=60) #The number of classes to consider 60/120
 parser.add_argument("-dt", "--data_size", type=str, default="Full") #The dataset size to consider Small/Medium/Full
 parser.add_argument("-dp", "--data_path", type=str, default="/home/jacopo/data/motion") #Path to the folder with the pickle files
-parser.add_argument("-e", "--epochs", type=int, default=100) #Number of epochs
+parser.add_argument("-e", "--epochs", type=int, default=10) #Number of epochs
 parser.add_argument("-dv", "--device", type=str, default="auto") #Type of device auto/cpu/cuda
-parser.add_argument("-pt", "--train_test", type=float, default=0.7) #TODO Split of training and Test samples (must be removed) 
-parser.add_argument("-bc", "--batch_size", type=int, default=64) #Batchsize considered (high vakues can give memory issue)
+parser.add_argument("-pt", "--train_test", type=float, default=0.7)
+parser.add_argument("-bc", "--batch_size", type=int, default=16) #Batchsize considered (high vakues can give memory issue)
 parser.add_argument('-debug', action='store_true') #Activate debug mode that prints some useful information
 parser.add_argument("-tk", "--top_k", type=int, default=5) #Number of K considered for the computation of top K accuracy
 parser.add_argument("-rp", "--results_path", type=str, default="/home/jacopo/PycharmProjects/MasterThesis/Plot") #Path in which plots are exported
@@ -117,9 +118,12 @@ if __name__ == "__main__":
         else:
             print("Experiments will run using "+str(device)+" on "+str(torch.cuda.get_device_name(device)))
 
+    transform = T.Compose([
+        T.NormalizeFeatures(), # normalize features of Babel and NTU
+    ])
     #Load Training Set from pickle file
     print("\nLoading dataset from "+train_path)
-    train_dataset = SkeletalDataset(args.dataset, args.data_size, args.classes, "train", None, root_dir=args.data_path)
+    train_dataset = SkeletalDataset(args.dataset, args.data_size, args.classes, "train", None, root_dir=args.data_path, transform=transform)
     print("Dataset "+args.dataset+str(classes)+"_"+args.data_size+" is ready\n")
 
     #Load Test Set from pickle file
@@ -128,7 +132,7 @@ if __name__ == "__main__":
 
     #Load Validation Set from pickle file
     print("\nLoading dataset from "+val_path)
-    test_dataset = SkeletalDataset(args.dataset, args.data_size, args.classes, "val", None, root_dir=args.data_path)
+    test_dataset = SkeletalDataset(args.dataset, args.data_size, args.classes, "val", None, root_dir=args.data_path, transform=transform)
     print("Dataset "+args.dataset+str(classes)+"_"+args.data_size+" is ready\n")
 
     #If in debug mode, print the shape and the cardinalities of the first graph of each dataset 

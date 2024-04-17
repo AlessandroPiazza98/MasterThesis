@@ -79,6 +79,7 @@ class BabelConvToPyG:
         x = torch.tensor(nodes)
 
         data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+
         return data
 
 
@@ -152,6 +153,7 @@ class NTUConvToPyG:
         x = torch.tensor(nodes)
 
         data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+
         return data
 
 
@@ -159,7 +161,9 @@ class NTUConvToPyG:
 class SkeletalDataset(Dataset):
     """NTU or Babel dataset."""
 
-    def __init__(self, name, data_size, classes, split, eval_type, root_dir):
+    def __init__(self, name, data_size, classes, split, eval_type, root_dir, transform=None):
+
+        self.transform =transform
 
         self.data_size = data_size
         if name == "Babel":
@@ -211,6 +215,9 @@ class SkeletalDataset(Dataset):
     def __getitem__(self, idx):
         data, y =self.dataset[idx]
         data.y = torch.tensor([y])
+
+        if self.transform is not None:
+            data = self.transform(data)
 
         return data
 
