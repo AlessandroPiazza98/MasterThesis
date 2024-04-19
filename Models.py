@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 #PyTorch_Geometric Utilities
-from torch_geometric.nn import GENConv, global_mean_pool, SAGPooling
+from torch_geometric.nn import GENConv, global_mean_pool, SAGPooling, TopKPooling
 from torch_geometric.nn import global_max_pool as gmp
 from torch_geometric.nn import global_mean_pool as gap
 
@@ -16,7 +16,8 @@ from torch_geometric.nn import global_mean_pool as gap
 
 def models_map(input_dim, output_dim, edge_dim, device): 
     dict = {'GCN':GCN(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device),
-            'Pool':Pool(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device)}
+            'Pool':Pool(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device),
+            'GCN5':GCN5(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device)}
     return dict
 
 def debug_p(string, debug):
@@ -28,14 +29,106 @@ def debug_p(string, debug):
 class Pool(torch.nn.Module):
     def __init__(self, in_dim, out_dim, edge_dim, dropout=0.2):
         super().__init__()
+        self.dropout = dropout
+        self.conv1 = GENConv(in_dim, 64, edge_dim=edge_dim)
+        self.pool1 = TopKPooling(64, ratio=0.2)
+        self.conv2 = GENConv(64, 64, edge_dim=edge_dim)
+        self.pool2 = TopKPooling(64, ratio=0.2)
+        self.conv3 = GENConv(64, 128, edge_dim=edge_dim)
+        self.pool3 = TopKPooling(128, ratio=0.2)
+        self.dense1 = nn.Linear(128, 64)
+        self.dense2 = nn.Linear(64, out_dim)
+
+    
+
+    def forward(self, x, edge_index, edge_attr, batch, debug=False):
+        
+        debug_p(f'Start {x.shape}', debug)
+        x = self.conv1(x, edge_index, edge_attr)
+        debug_p(f'Conv1 {x.shape}', debug)
+
+        x, edge_index, edge_attr, batch, _, _ = self.pool1(x, edge_index, edge_attr, batch)
+        debug_p(f'Pool1 {x.shape}', debug)
+
+        x = x.relu()
+
+        x = self.conv2(x, edge_index, edge_attr)
+        debug_p(f'Conv2 {x.shape}', debug)
+
+        x, edge_index, edge_attr, batch, _, _ = self.pool2(x, edge_index, edge_attr, batch)
+        debug_p(f'Pool2 {x.shape}', debug)
+
+        x = x.relu()
+        x = self.conv3(x, edge_index, edge_attr)
+        debug_p(f'Conv3 {x.shape}', debug)
+
+        x, edge_index, edge_attr, batch, _, _ = self.pool3(x, edge_index, edge_attr, batch)
+        debug_p(f'Pool3 {x.shape}', debug)
+        x = x.relu()
+        # Perform global mean pooling
+        x = global_mean_pool(x, batch)
+        debug_p(f'GMPool {x.shape}', debug)
+       
+        x = F.dropout(x, p=self.dropout)
+        x = self.dense1(x)
+        debug_p(f'Lin1 {x.shape}', debug)
+
+        x = self.dense2(x)
+        debug_p(f'Lin2 {x.shape}', debug)
+        x = torch.log_softmax(x, dim=-1)
+        return x
+
+class OldPool2(torch.nn.Module):
+    def __init__(self, in_dim, out_dim, edge_dim, dropout=0.2):
+        super().__init__()
         self.conv1 = GENConv(in_dim, 256, edge_dim=edge_dim)
         self.pool1 = SAGPooling(256, ratio=0.5)
-
         self.conv2 = GENConv(256, 128, edge_dim=edge_dim)
         self.pool2 = SAGPooling(128, ratio=0.5)
+        self.lin1 = torch.nn.Linear(128, 64)
+        self.lin2 = torch.nn.Linear(64, out_dim)
 
-        self.conv3 = GENConv(128, 64, edge_dim=edge_dim)
-        self.pool3 = SAGPooling(64, ratio=0.5)
+    
+
+    def forward(self, x, edge_index, edge_attr, batch, debug=False):
+        
+        debug_p(f'Start {x.shape}', debug)
+        x = self.conv1(x, edge_index)
+        debug_p(f'Conv1 {x.shape}', debug)
+
+        x, edge_index, edge_attr, batch, _, _ = self.pool1(x, edge_index, edge_attr, batch)
+        debug_p(f'Pool1 {x.shape}', debug)
+
+        x = self.conv2(x, edge_index)
+        debug_p(f'Conv2 {x.shape}', debug)
+
+        x, edge_index, edge_attr, batch, _, _ = self.pool2(x, edge_index, edge_attr, batch)
+        debug_p(f'Pool2 {x.shape}', debug)
+
+        x = global_mean_pool(x, batch)
+        debug_p(f'GMPool {x.shape}', debug)
+
+        x = F.relu(self.lin1(x))
+        debug_p(f'Lin1 {x.shape}', debug)
+
+        x = F.log_softmax(self.lin2(x), -1)
+        debug_p(f'Lin2 {x.shape}', debug)
+
+        return x
+
+
+class OldPool(torch.nn.Module):
+    def __init__(self, in_dim, out_dim, edge_dim, dropout=0.2):
+        super().__init__()
+        self.dropout = dropout
+        self.conv1 = GENConv(in_dim, 512, edge_dim=edge_dim)
+        self.pool1 = SAGPooling(512, ratio=0.5)
+
+        self.conv2 = GENConv(512, 256, edge_dim=edge_dim)
+        self.pool2 = SAGPooling(256, ratio=0.5)
+
+        self.conv3 = GENConv(256, 128, edge_dim=edge_dim)
+        self.pool3 = SAGPooling(128, ratio=0.5)
 
         self.conv4 = GENConv(64, 64, edge_dim=edge_dim)
         self.pool4 = SAGPooling(64, ratio=0.8)
@@ -52,24 +145,26 @@ class Pool(torch.nn.Module):
     def forward(self, x, edge_index, edge_attr, batch, debug=False):
         
         debug_p(f'Start {x.shape}', debug)
+        
         x = F.relu(self.conv1(x, edge_index))
         debug_p(f'Conv1 {x.shape}', debug)
 
-        x, edge_index, _, batch, _, _ = self.pool1(x, edge_index, None, batch)
+        x, edge_index, edge_attr, batch, _, _ = self.pool1(x, edge_index, edge_attr, batch)
         debug_p(f'Pool1 {x.shape}', debug)
 
         x = F.relu(self.conv2(x, edge_index))
         debug_p(f'Conv2 {x.shape}', debug)
 
-        x, edge_index, _, batch, _, _ = self.pool2(x, edge_index, None, batch)
+        x, edge_index, edge_attr, batch, _, _ = self.pool2(x, edge_index, edge_attr, batch)
         debug_p(f'Pool2 {x.shape}', debug)
 
         x = F.relu(self.conv3(x, edge_index))
         debug_p(f'Conv3 {x.shape}', debug)
 
-        x, edge_index, _, batch, _, _ = self.pool3(x, edge_index, None, batch)
+        x, edge_index, edge_attr, batch, _, _ = self.pool3(x, edge_index, edge_attr, batch)
         debug_p(f'Pool3 {x.shape}', debug)
 
+        '''
         x1 = torch.cat([gmp(x, batch), gap(x, batch)], dim=1)
         debug_p(f'x1 {x1.shape}', debug)
 
@@ -94,10 +189,15 @@ class Pool(torch.nn.Module):
         x = x1 + x2 + x3
         debug_p(f'x1+x2+x3 {x.shape}', debug)
 
+        '''
+
+        x = global_mean_pool(x, batch)
+        debug_p(f'GMPool {x.shape}', debug)
+
         x = F.relu(self.lin1(x))
         debug_p(f'Lin1 {x.shape}', debug)
 
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=self.dropout)
         debug_p(f'Dropout {x.shape}', debug)
 
         x = F.relu(self.lin2(x))
@@ -120,20 +220,83 @@ class GCN(torch.nn.Module):
 
     
 
-    def forward(self, x, edge_index, edge_attr, batch):
+    def forward(self, x, edge_index, edge_attr, batch, debug=False):
         
+        debug_p(f'Start {x.shape}', debug)
         x = self.conv1(x, edge_index, edge_attr)
+        debug_p(f'Conv1 {x.shape}', debug)
+
         x = x.relu()
         x = self.conv2(x, edge_index, edge_attr)
+        debug_p(f'Conv2 {x.shape}', debug)
+
         x = x.relu()
         x = self.conv3(x, edge_index, edge_attr)
+        debug_p(f'Conv3 {x.shape}', debug)
+
         x = x.relu()
-        
         # Perform global mean pooling
         x = global_mean_pool(x, batch)
+        debug_p(f'GMPool {x.shape}', debug)
+       
+        x = F.dropout(x, p=self.dropout)
+        x = self.dense1(x)
+        debug_p(f'Lin1 {x.shape}', debug)
+
+        x = self.dense2(x)
+        debug_p(f'Lin2 {x.shape}', debug)
+        x = torch.log_softmax(x, dim=-1)
+        return x
+
+
+class GCN5(torch.nn.Module):
+    def __init__(self, in_dim, out_dim, edge_dim, dropout=0.2):
+        super().__init__()
+        self.dropout = dropout
+        self.conv1 = GENConv(in_dim, 64, edge_dim=edge_dim)
+        self.conv2 = GENConv(64, 64, edge_dim=edge_dim)
+        self.conv3 = GENConv(64, 128, edge_dim=edge_dim)
+        self.conv4 = GENConv(128, 256, edge_dim=edge_dim)
+        self.conv5 = GENConv(256, 512, edge_dim=edge_dim)
+        self.dense1 = nn.Linear(512, 512)
+        self.dense2 = nn.Linear(512, 256)
+        self.dense3 = nn.Linear(256, out_dim)
+
+    def forward(self, x, edge_index, edge_attr, batch, debug=False):
+
+        debug_p(f'Start {x.shape}', debug)
+        x = self.conv1(x, edge_index, edge_attr)
+        debug_p(f'Conv1 {x.shape}', debug)
+
+        x = x.relu()
+        x = self.conv2(x, edge_index, edge_attr)
+        debug_p(f'Conv2 {x.shape}', debug)
+
+        x = x.relu()
+        x = self.conv3(x, edge_index, edge_attr)
+        debug_p(f'Conv3 {x.shape}', debug)
+
+        x = x.relu()
+        x = self.conv4(x, edge_index, edge_attr)
+        debug_p(f'Conv4 {x.shape}', debug)
+
+        x = x.relu()
+        x = self.conv5(x, edge_index, edge_attr)
+        debug_p(f'Conv5 {x.shape}', debug)
+
+        x = x.relu()
+        # Perform global mean pooling
+        x = global_mean_pool(x, batch)
+        debug_p(f'GMPool {x.shape}', debug)
         
         x = F.dropout(x, p=self.dropout)
         x = self.dense1(x)
+        debug_p(f'Lin1 {x.shape}', debug)
+
         x = self.dense2(x)
+        debug_p(f'Lin2 {x.shape}', debug)
+        x = self.dense3(x)
+
+        debug_p(f'Lin3 {x.shape}', debug)
         x = torch.log_softmax(x, dim=-1)
         return x

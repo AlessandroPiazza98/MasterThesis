@@ -30,8 +30,8 @@ os.environ["WANDB_SILENT"] = "true" #Don't want the classical verbose output of 
 #Setup Argument Parser
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--dataset", type=str, default="Babel") #The dataset considered for the computations Babel/NTU
-parser.add_argument("-c", "--classes", type=str, default=60) #The number of classes to consider 60/120
-parser.add_argument("-dt", "--data_size", type=str, default="Medium") #The dataset size to consider Small/Medium/Full
+parser.add_argument("-c", "--classes", type=str, default=120) #The number of classes to consider 60/120
+parser.add_argument("-dt", "--data_size", type=str, default="Full") #The dataset size to consider Small/Medium/Full
 parser.add_argument("-dp", "--data_path", type=str, default="/data03/Users/Alessandro/Data/") #Path to the folder with the pickle files
 parser.add_argument("-e", "--epochs", type=int, default=100) #Number of epochs
 parser.add_argument("-dv", "--device", type=str, default="auto") #Type of device auto/cpu/cuda
@@ -42,6 +42,8 @@ parser.add_argument("-tk", "--top_k", type=int, default=5) #Number of K consider
 parser.add_argument("-rp", "--results_path", type=str, default="/home/ale_piazza/MasterThesis/Plot") #Path in which plots are exported
 parser.add_argument("-wk", "--wandb_key", type=str, default="") #API key for wandb. If not inserted nothing is exported.
 parser.add_argument('-m', "--model", type=str, default="GCN") #Model to consider: the string must match with one of the keys of Models.models_map
+parser.add_argument('-l', "--loss", type=str, default="CE") #Loss function
+
 
 args = parser.parse_args() #Initialize parser
 
@@ -59,7 +61,8 @@ print(tabulate.tabulate([
                 ["Top_K", args.top_k],  
                 ["Results Path",args.results_path], 
                 ["Wandb API",args.wandb_key!=""],
-                ["Model",args.model],                               
+                ["Model",args.model], 
+                ["Loss",args.loss],                              
                 ], headers=['Argument', 'Value']))
 print()
 
@@ -81,6 +84,7 @@ if __name__ == "__main__":
     results_path=args.results_path
     wandb_key = args.wandb_key
     model_key = args.model
+    loss_key = args.loss
 
     tz = datetime.timezone.utc
     ft = "%Y-%m-%dT%H:%M:%S%z"
@@ -98,7 +102,8 @@ if __name__ == "__main__":
             "architecture": model_key,
             "dataset": args.dataset+str(classes)+"_"+args.data_size,
             "epochs": num_epochs,
-            "batch-size": batch_size
+            "batch-size": batch_size,
+            "loss": loss_key
             }
         )
 
@@ -146,42 +151,43 @@ if __name__ == "__main__":
 
     #TODO keep also attention val/test names and definitions, actually perc_train% of train_dataset is the Training, the reamining % is the Validation and val_dataset becomes the Test
     train_loader = DataLoader(train_dataset[:N_th_train_test], batch_size=batch_size, shuffle=True)
+
     val_loader = DataLoader(train_dataset[N_th_train_test:], batch_size=batch_size, shuffle=True)
+
     #test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False) 
     test_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, )
-
     #Dimensions considered by the model
     input_dim = train_dataset[0].num_node_features #Number of features for each node
     edge_dim = train_dataset[0].num_edge_features #Number of features for each edge
     output_dim = classes #Number of classes 
     labels = list(range(0,output_dim)) #Assigning a numerical label for each class
     class_freq = []
- 
+    class_w = []
     #Compute the weight that must be considered by the loss function for each class
-    for i in range(0, len(train_dataset)):
+    for i in range(0, len(train_dataset[:N_th_train_test])):
          class_freq.append(train_dataset[i].y)
+         if torch.isnan(train_dataset[i].x).any():
+              raise ValueError(i)
     #Compute how frequent is each class
-    class_f = [len(list(group)) for key, group in groupby(sorted(class_freq))]
-    class_w = torch.Tensor([x/sum(class_f) for x in class_freq]).to(device)
-
-    #If in debug mode, print the dicionaris of frequencies and weights
-    if args.debug:
-            class_keys = [key.numpy()[0] for key, group in groupby(sorted(class_freq))]
-            freq_dict = dict(zip(class_keys, class_f))
-            weight_dict = dict(zip(class_keys, class_w))
-            print("Dictionary of class freqeuencies in Training Set:")
-            print(freq_dict)
-            print("\nDictionary of class weights in Training Set:")
-            print(freq_dict)
-
+    if loss_key == "CEw":
+        class_f = [len(list(group)) for key, group in groupby(sorted(class_freq))]
+        class_w = torch.Tensor([x/sum(class_f) for x in class_f]).to(device)
+        #If in debug mode, print the dicionaris of frequencies and weights
+        if args.debug:
+                class_keys = [key.numpy()[0] for key, group in groupby(sorted(class_freq))]
+                freq_dict = dict(zip(class_keys, class_f))
+                weight_dict = dict(zip(class_keys, class_w))
+                print("Dictionary of class frequencies in Training Set:")
+                print(freq_dict)
+                print("\nDictionary of class weights in Training Set:")
+                print(freq_dict)
     #Define your model and optimizer, taking the model from the models_map dictionary on Models.py 
     MODELS_MAP = models_map(input_dim, output_dim, edge_dim, device) # type: ignore
     model = MODELS_MAP[model_key]
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.008) #TODO go in deeper details for optimizer
-
-    #Select weighted Cross Entropy Loss only if size is Full to avoid mismathc in the number of labels
-    if args.data_size =="Full":
-        criterion = torch.nn.CrossEntropyLoss(class_w)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.008, weight_decay=0.00001) #TODO go in deeper details for optimizer
+    #Select different criterions only if size is Full to avoid mismatch in the number of labels
+    if args.data_size == "Full":
+        criterion = select_loss(loss_key, class_w)
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
@@ -190,16 +196,15 @@ if __name__ == "__main__":
         model_debug = MODELS_MAP[model_key]
         model_debug.train()
         data = next(iter(train_loader)) #Pick a single batch
-        print("The debugging batch has this shape:")
+        print("\nThe debugging batch has this shape:")
         print(data) # Print size of the batch  
-        print("After each layer this is the expected size of the data:")
+        print("\nAfter each layer this is the expected size of the data:")
         optimizer.zero_grad()  # Clear gradients.
         data = data.to(device)
         out = model_debug(data.x, data.edge_index, data.edge_attr, data.batch, debug=args.debug) #Run model on debug mode
         print("\n##### DEBUG MODE OFF #####\n")
         #loss_func = BalancedLoss(samples_per_cls=class_freq, no_of_classes=classes,
         #                     loss_type='cross-entropy', beta=0.99, gamma=0.5, device=device, label_smoothing=0.0) #TODO Debug dimensions
-        torch.cuda.empty_cache()
 
     #Print model configuration and number of epochs/batch_size
     print("Model Configuration:")
@@ -219,7 +224,6 @@ if __name__ == "__main__":
             loss = criterion(out, data.y)  # Compute the loss.
             loss.backward()  #Derive gradients.
             optimizer.step()  #Update parameters based on gradients.
-            torch.cuda.empty_cache()
 
     #Test function
     def test(loader, labels,k):
@@ -229,6 +233,8 @@ if __name__ == "__main__":
         loss_ = 0
         top_k = 0
         conf_matr = np.zeros((len(labels), len(labels)))
+        acc_by_label = np.zeros(len(labels))
+        count_by_label = np.zeros(len(labels))
         for data in loader:  #Iterate in batches over the  dataset
             data = data.to(device) #Move data on device
             out = model(data.x, data.edge_index, data.edge_attr, data.batch) #Obtain predictions 
@@ -237,10 +243,14 @@ if __name__ == "__main__":
             pred = out.argmax(dim=1)  #Use the class with highest value as predicitons
             #Update indexes and confusion matrix values
             correct += int((pred == data.y).sum())
-            torch.cuda.empty_cache()
             top_k += top_k_accuracy_score(data.y.cpu().numpy(), out.detach().cpu().numpy(), labels=labels, normalize=False, k=k)
-            conf_matr += confusion_matrix(data.y.cpu().numpy(),pred.cpu().numpy(), labels=labels)   
-        return correct / len(loader.dataset), loss_ / len(loader.dataset), top_k / len(loader.dataset), conf_matr  # Derive ratio of correct predictions.
+            conf_matr += confusion_matrix(data.y.cpu().numpy(),pred.cpu().numpy(), labels=labels)
+              
+            count_by_label += count_labels(data.y.cpu().numpy(), labels)
+            acc_by_label += count_matching_labels(data.y.cpu().numpy(), pred, labels)
+
+        acc_by_label = np.divide(acc_by_label, count_by_label, out=np.zeros_like(acc_by_label), where=count_by_label!=0)
+        return correct / len(loader.dataset), loss_ / len(loader.dataset), top_k / len(loader.dataset), conf_matr, sum(acc_by_label)/len(acc_by_label)  # Derive ratio of correct predictions.
    
     #Training loop
     #Initialize arrays for performances throuhg the epochs
@@ -256,35 +266,38 @@ if __name__ == "__main__":
         train()
 
         #Test the model on training and validation set
-        train_acc, train_loss, train_top_k, train_conf_matr = test(train_loader, labels, top_k)
-        val_acc, val_loss, val_top_k, val_conf_matr = test(val_loader, labels, top_k)
+        train_acc, train_loss, train_top_k, train_conf_matr, train_top_1_norm = test(train_loader, labels, top_k)
+        val_acc, val_loss, val_top_k, val_conf_matr, val_top_1_norm = test(val_loader, labels, top_k)
 
-        #Append performances
-        train_acc_val.append(train_acc)
-        val_acc_val.append(val_acc)
-        train_loss_val.append(train_loss)
-        val_loss_val.append(val_loss)
-        train_top_k_val.append(train_top_k)
-        val_top_k_val.append(val_top_k)
-
-        torch.cuda.empty_cache()
+        if wandb_key != "":
+            # log metrics to wandb #TODO
+            wandb.log({"train_acc": train_acc, 
+                    "train_loss": train_loss, 
+                    "train_top_"+str(top_k):train_top_k,
+                    "train_top_1_norm":train_top_1_norm,
+                    "val_acc": val_acc, 
+                    "val_loss": val_loss, 
+                    "val_top_"+str(top_k):val_top_k,
+                    "val_top_1_norm":val_top_1_norm
+                    })
+        
 
         #Print a summary tables of the epoch
         print(tabulate.tabulate([
-                ["Training Set", f'{train_acc:.4f}', f'{train_loss:.4f}',f'{train_top_k:.4f}'], 
-                ["Validation Set", f'{val_acc:.4f}', f'{val_loss:.4f}',f'{val_top_k:.4f}']
-                ], headers=[f'Epoch: {epoch:03d}', "Accuracy", "Loss","Top_"+str(top_k)+" Accuracy"],))
+                ["Training Set", f'{train_acc:.4f}', f'{train_loss:.4f}',f'{train_top_k:.4f}',f'{train_top_1_norm:.4f}'], 
+                ["Validation Set", f'{val_acc:.4f}', f'{val_loss:.4f}',f'{val_top_k:.4f}',f'{val_top_1_norm:.4f}']
+                ], headers=[f'Epoch: {epoch:03d}', "Accuracy", "Loss","Top_"+str(top_k)+" Accuracy", "Top-1 Norm"],))
         print()
     
     #Obtain all the predictions after last epoch
-    train_acc, train_loss, train_top_k, train_conf_matr = test(train_loader, labels, top_k)
-    val_acc, val_loss, val_top_k, val_conf_matr = test(val_loader, labels, top_k)
-    test_acc, test_loss, test_top_k, test_conf_matr = test(test_loader, labels, top_k)
+    train_acc, train_loss, train_top_k, train_conf_matr, train_top_1_norm = test(train_loader, labels, top_k)
+    val_acc, val_loss, val_top_k, val_conf_matr, val_top_1_norm = test(val_loader, labels, top_k)
+    test_acc, test_loss, test_top_k, test_conf_matr, test_top_1_norm = test(test_loader, labels, top_k)
 
     #Generates and save the confusion matrix for all the dataset
-    save_conf_matr(train_conf_matr, "Train", results_path)
-    save_conf_matr(val_conf_matr, "Val", results_path)
-    save_conf_matr(test_conf_matr, "Test", results_path)
+    save_conf_matr(train_conf_matr, "Train", results_path, now)
+    save_conf_matr(val_conf_matr, "Val", results_path, now)
+    save_conf_matr(test_conf_matr, "Test", results_path, now)
 
     #Export results on wandb
     if wandb_key != "":
@@ -292,12 +305,15 @@ if __name__ == "__main__":
         wandb.log({"train_acc": train_acc, 
                 "train_loss": train_loss, 
                 "train_top_"+str(top_k):train_top_k,
+                "train_top_1_norm":train_top_1_norm,
                 "val_acc": val_acc, 
                 "val_loss": val_loss, 
                 "val_top_"+str(top_k):val_top_k,
+                "val_top_1_norm":val_top_1_norm,
                 "test_acc": test_acc, 
                 "test_loss": test_loss, 
-                "test_top_"+str(top_k):test_top_k
+                "test_top_"+str(top_k):test_top_k,
+                "test_top_1_norm":test_top_1_norm
                 })
     #Close wandb session
     if wandb_key != "":  

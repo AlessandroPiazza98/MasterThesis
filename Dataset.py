@@ -10,7 +10,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--dataset", type=str, default="Babel")
 parser.add_argument("-c", "--classes", type=str, default=60)
-parser.add_argument("-dt", "--data_size", type=str, default="Medium")
+parser.add_argument("-dt", "--data_size", type=str, default="Full")
 parser.add_argument("-sp", "--split", type=str, default="train")
 parser.add_argument("-dp", "--data_path", type=str, default="/data03/Datasets/Skeletal_data")
 parser.add_argument("-pp", "--pkl_path", type=str, default="/data03/Users/Alessandro/Data")
@@ -32,7 +32,6 @@ class BabelConvToPyG:
     def __call__(self, x):
         kpts=25
         frames=150
-        print(x.shape)
 
         #Spatial edges according to kpts
         #sp_start_i=[1,1,1,2,2,3,3,4,5,5,7,7,8,8,8,9,9,10,10,11,11,12,12,12,13,13,14,14,15,15,16,17,17,18,18,19,19,20,21,21,21,21,22,23,24,25]
@@ -75,7 +74,7 @@ class BabelConvToPyG:
                            sp_edge_o+tmp_edge_o])
         
         #Create edge_attr: 0 for spatial edges, 1 for temporal edges
-        edge_attr = torch.tensor([[0.]]*len(sp_edge_i)+[[1.]]*len(tmp_edge_i))
+        edge_attr = torch.tensor([[1.]]*len(sp_edge_i)+[[2.]]*len(tmp_edge_i))
 
         edge_index, edge_attr = to_undirected(edge_index=edge_index, edge_attr=edge_attr)
         
@@ -85,7 +84,7 @@ class BabelConvToPyG:
         x=x[0]
         for i in range(frames):
             for j in range(kpts):
-                nodes.append(x[i][j].tolist())
+                nodes.append(np.append([i],x[i][j]).tolist())
 
         x = torch.tensor(nodes)
         
@@ -149,7 +148,7 @@ class NTUConvToPyG:
                            sp_edge_o+tmp_edge_o])
         
         #Create edge_attr: 0 for spatial edges, 1 for temporal edges
-        edge_attr = torch.tensor([[0.]]*len(sp_edge_i)+[[1.]]*len(tmp_edge_i))
+        edge_attr = torch.tensor([[1.]]*len(sp_edge_i)+[[2.]]*len(tmp_edge_i))
 
         edge_index, edge_attr = to_undirected(edge_index=edge_index, edge_attr=edge_attr)
         
@@ -159,7 +158,7 @@ class NTUConvToPyG:
         x=x[0]
         for i in range(frames):
             for j in range(kpts):
-                nodes.append(x[i][j].tolist())
+                nodes.append(np.append([i]/frames,x[i][j]).tolist())
 
         x = torch.tensor(nodes)
         
