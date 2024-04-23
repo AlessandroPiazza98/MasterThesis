@@ -74,7 +74,7 @@ class BabelConvToPyG:
                            sp_edge_o+tmp_edge_o])
         
         #Create edge_attr: 0 for spatial edges, 1 for temporal edges
-        edge_attr = torch.tensor([[1.]]*len(sp_edge_i)+[[2.]]*len(tmp_edge_i))
+        edge_attr = torch.tensor([[0.]]*len(sp_edge_i)+[[1.]]*len(tmp_edge_i))
 
         edge_index, edge_attr = to_undirected(edge_index=edge_index, edge_attr=edge_attr)
         
@@ -84,8 +84,8 @@ class BabelConvToPyG:
         x=x[0]
         for i in range(frames):
             for j in range(kpts):
-                nodes.append(np.append([i],x[i][j]).tolist())
-
+                nodes.append(np.append([i/frames],x[i][j]).tolist())
+                
         x = torch.tensor(nodes)
         
         data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
@@ -148,7 +148,7 @@ class NTUConvToPyG:
                            sp_edge_o+tmp_edge_o])
         
         #Create edge_attr: 0 for spatial edges, 1 for temporal edges
-        edge_attr = torch.tensor([[1.]]*len(sp_edge_i)+[[2.]]*len(tmp_edge_i))
+        edge_attr = torch.tensor([[0.]]*len(sp_edge_i)+[[1.]]*len(tmp_edge_i))
 
         edge_index, edge_attr = to_undirected(edge_index=edge_index, edge_attr=edge_attr)
         
@@ -158,7 +158,7 @@ class NTUConvToPyG:
         x=x[0]
         for i in range(frames):
             for j in range(kpts):
-                nodes.append(np.append([i]/frames,x[i][j]).tolist())
+                nodes.append(np.append([i/frames],x[i][j]).tolist())
 
         x = torch.tensor(nodes)
         

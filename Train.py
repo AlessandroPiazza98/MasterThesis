@@ -34,7 +34,7 @@ parser.add_argument("-c", "--classes", type=str, default=120) #The number of cla
 parser.add_argument("-dt", "--data_size", type=str, default="Full") #The dataset size to consider Small/Medium/Full
 parser.add_argument("-dp", "--data_path", type=str, default="/data03/Users/Alessandro/Data/") #Path to the folder with the pickle files
 parser.add_argument("-e", "--epochs", type=int, default=100) #Number of epochs
-parser.add_argument("-dv", "--device", type=str, default="auto") #Type of device auto/cpu/cuda
+parser.add_argument("-dv", "--device", type=str, default="cuda:1") #Type of device auto/cpu/cuda
 parser.add_argument("-pt", "--train_test", type=float, default=0.7) #TODO Split of training and Test samples (must be removed) 
 parser.add_argument("-bc", "--batch_size", type=int, default=32) #Batchsize considered (high vakues can give memory issue)
 parser.add_argument('-debug', action='store_true') #Activate debug mode that prints some useful information
@@ -152,10 +152,10 @@ if __name__ == "__main__":
     #TODO keep also attention val/test names and definitions, actually perc_train% of train_dataset is the Training, the reamining % is the Validation and val_dataset becomes the Test
     train_loader = DataLoader(train_dataset[:N_th_train_test], batch_size=batch_size, shuffle=True)
 
-    val_loader = DataLoader(train_dataset[N_th_train_test:], batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(train_dataset[N_th_train_test:], batch_size=batch_size, shuffle=False)
 
     #test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False) 
-    test_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, )
+    test_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     #Dimensions considered by the model
     input_dim = train_dataset[0].num_node_features #Number of features for each node
     edge_dim = train_dataset[0].num_edge_features #Number of features for each edge
@@ -171,7 +171,8 @@ if __name__ == "__main__":
     #Compute how frequent is each class
     if loss_key == "CEw":
         class_f = [len(list(group)) for key, group in groupby(sorted(class_freq))]
-        class_w = torch.Tensor([x/sum(class_f) for x in class_f]).to(device)
+        class_w = torch.Tensor([1/x for x in class_f]).to(device)
+        print(class_w)
         #If in debug mode, print the dicionaris of frequencies and weights
         if args.debug:
                 class_keys = [key.numpy()[0] for key, group in groupby(sorted(class_freq))]
@@ -180,7 +181,7 @@ if __name__ == "__main__":
                 print("Dictionary of class frequencies in Training Set:")
                 print(freq_dict)
                 print("\nDictionary of class weights in Training Set:")
-                print(freq_dict)
+                print(weight_dict)
     #Define your model and optimizer, taking the model from the models_map dictionary on Models.py 
     MODELS_MAP = models_map(input_dim, output_dim, edge_dim, device) # type: ignore
     model = MODELS_MAP[model_key]
@@ -290,8 +291,6 @@ if __name__ == "__main__":
         print()
     
     #Obtain all the predictions after last epoch
-    train_acc, train_loss, train_top_k, train_conf_matr, train_top_1_norm = test(train_loader, labels, top_k)
-    val_acc, val_loss, val_top_k, val_conf_matr, val_top_1_norm = test(val_loader, labels, top_k)
     test_acc, test_loss, test_top_k, test_conf_matr, test_top_1_norm = test(test_loader, labels, top_k)
 
     #Generates and save the confusion matrix for all the dataset
@@ -302,14 +301,7 @@ if __name__ == "__main__":
     #Export results on wandb
     if wandb_key != "":
         # log metrics to wandb #TODO
-        wandb.log({"train_acc": train_acc, 
-                "train_loss": train_loss, 
-                "train_top_"+str(top_k):train_top_k,
-                "train_top_1_norm":train_top_1_norm,
-                "val_acc": val_acc, 
-                "val_loss": val_loss, 
-                "val_top_"+str(top_k):val_top_k,
-                "val_top_1_norm":val_top_1_norm,
+        wandb.log({
                 "test_acc": test_acc, 
                 "test_loss": test_loss, 
                 "test_top_"+str(top_k):test_top_k,
