@@ -1,3 +1,6 @@
+#Torch
+import torch
+
 #SkLearn Utilities
 from sklearn.metrics import ConfusionMatrixDisplay #In particular some performances utilities
 
@@ -17,10 +20,41 @@ def debug(dataset):
     print("dataset[0] class: "+str(dataset[0].y))
     print()
 
-def save_conf_matr(Dataset, label, results_path):
+def save_conf_matr(Dataset, label, results_path, now):
     disp = ConfusionMatrixDisplay(Dataset)
     disp.plot(include_values=False, xticks_rotation=60)
     plt.title("Confusion Matrix")
     fig = plt.gcf()
     fig.set_size_inches(20, 20)
-    plt.savefig(results_path+"/Conf_Matr_"+label+".png", dpi=300)
+    plt.savefig(results_path+"/Conf_Matr_"+label+"_"+now+".png", dpi=300)
+
+def select_loss(loss_key, class_w):
+        if loss_key == "CEw":
+            return torch.nn.CrossEntropyLoss(class_w)
+        elif loss_key == "CE":
+            return torch.nn.CrossEntropyLoss()
+        else:
+            return torch.nn.CrossEntropyLoss()
+        
+def count_labels(arr, total_labels):
+    label_counts = {}
+    for label in arr:
+        if label in label_counts:
+            label_counts[label] += 1
+        else:
+            label_counts[label] = 1
+    
+    label_occurrences = [label_counts.get(i, 0) for i in total_labels]
+    return label_occurrences
+
+def count_matching_labels(arr1, arr2, total_labels):
+    label_counts = {}
+    for label1, label2 in zip(arr1, arr2):
+        if label1 == label2:
+            if label1 in label_counts:
+                label_counts[label1] += 1
+            else:
+                label_counts[label1] = 1
+    
+    label_occurrences = [label_counts.get(i, 0) for i in total_labels]
+    return label_occurrences
