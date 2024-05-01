@@ -6,6 +6,7 @@ from sklearn.metrics import ConfusionMatrixDisplay #In particular some performan
 
 #I/O Utilities
 import matplotlib.pyplot as plt #For plots
+import wandb
 
 def debug(dataset):
     dataset[0].validate(raise_on_error=True)
@@ -20,13 +21,15 @@ def debug(dataset):
     print("dataset[0] class: "+str(dataset[0].y))
     print()
 
-def save_conf_matr(Dataset, label, results_path, now):
+def save_conf_matr(Dataset, dataset, classes, label, results_path, now):
+    name = "Conf_Matr_"+dataset+str(classes)+label+"_"+now+".png"
     disp = ConfusionMatrixDisplay(Dataset)
     disp.plot(include_values=False, xticks_rotation=60)
-    plt.title("Confusion Matrix")
+    plt.title(name)
     fig = plt.gcf()
     fig.set_size_inches(20, 20)
-    plt.savefig(results_path+"/Conf_Matr_"+label+"_"+now+".png", dpi=300)
+    plt.savefig(results_path+"/Conf_Matr_"+dataset+str(classes)+label+"_"+now+".png", dpi=300)
+    wandb.log({name: plt})
 
 def select_loss(loss_key, class_w):
         if loss_key == "CEw":
