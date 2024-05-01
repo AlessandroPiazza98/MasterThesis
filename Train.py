@@ -43,7 +43,8 @@ parser.add_argument("-rp", "--results_path", type=str, default="/home/ale_piazza
 parser.add_argument("-wk", "--wandb_key", type=str, default="") #API key for wandb. If not inserted nothing is exported.
 parser.add_argument('-m', "--model", type=str, default="GCN") #Model to consider: the string must match with one of the keys of Models.models_map
 parser.add_argument('-l', "--loss", type=str, default="CE") #Loss function
-
+parser.add_argument('-lr', "--learn_rate", type=float, default=0.001) #Learning rate
+parser.add_argument('-hn', "--hidden", type=int, default=64) #Hidden layers if requested
 
 args = parser.parse_args() #Initialize parser
 
@@ -62,7 +63,9 @@ print(tabulate.tabulate([
                 ["Results Path",args.results_path], 
                 ["Wandb API",args.wandb_key!=""],
                 ["Model",args.model], 
-                ["Loss",args.loss],                              
+                ["Hidden",args.hidden],
+                ["Loss",args.loss],   
+                ["Learning Rate",args.learn_rate],                           
                 ], headers=['Argument', 'Value']))
 print()
 
@@ -85,27 +88,13 @@ if __name__ == "__main__":
     wandb_key = args.wandb_key
     model_key = args.model
     loss_key = args.loss
+    lr = args.learn_rate
+    hidden = args.hidden
 
     tz = datetime.timezone.utc
     ft = "%Y-%m-%dT%H:%M:%S%z"
     now = datetime.datetime.now(tz=tz).strftime(ft) #Create datetime reference for the start of the computation
 
-    #Setup WandB project
-    if wandb_key != "":
-        wandb.login(key=args.wandb_key) #Login on wnadb thorugh API key parsed
-        wandb.init(
-            #Set the wandb project where this run will be logged
-            project="Master Thesis",
-            name=model_key+"_"+args.dataset+str(classes)+"_"+args.data_size+"_"+now, #The name depends on the model/classes/size considered and uses the datetime as key
-            #Track hyperparameters and run metadata
-            config={
-            "architecture": model_key,
-            "dataset": args.dataset+str(classes)+"_"+args.data_size,
-            "epochs": num_epochs,
-            "batch-size": batch_size,
-            "loss": loss_key
-            }
-        )
 
     #Use CUDA if available, otherwise selected device and print where the experiments will run
     if args.device == "auto":
@@ -183,9 +172,9 @@ if __name__ == "__main__":
                 print("\nDictionary of class weights in Training Set:")
                 print(weight_dict)
     #Define your model and optimizer, taking the model from the models_map dictionary on Models.py 
-    MODELS_MAP = models_map(input_dim, output_dim, edge_dim, device) # type: ignore
+    MODELS_MAP = models_map(input_dim, output_dim, edge_dim, device, hidden) # type: ignore
     model = MODELS_MAP[model_key]
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.008, weight_decay=0.00001) #TODO go in deeper details for optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.00001) #TODO go in deeper details for optimizer
     #Select different criterions only if size is Full to avoid mismatch in the number of labels
     if args.data_size == "Full":
         criterion = select_loss(loss_key, class_w)
@@ -212,6 +201,26 @@ if __name__ == "__main__":
     print(model)
     print("\nWill run for "+str(num_epochs)+" epochs with batch size equal to "+str(batch_size))
     print()
+
+    #Setup WandB project
+    if wandb_key != "":
+        wandb.login(key=args.wandb_key) #Login on wnadb thorugh API key parsed
+        wandb.init(
+            #Set the wandb project where this run will be logged
+            project="Master Thesis",
+            name=model_key+"_"+args.dataset+str(classes)+"_"+args.data_size+"_"+now, #The name depends on the model/classes/size considered and uses the datetime as key
+            #Track hyperparameters and run metadata
+            config={
+            "architecture": model_key,
+            "dataset": args.dataset+str(classes)+"_"+args.data_size,
+            "epochs": num_epochs,
+            "batch-size": batch_size,
+            "loss": loss_key,
+            "learn_rate": lr,
+            "layers": model,
+            "hidden": hidden
+            }
+        )
 
     #Training function
     def train():
@@ -294,13 +303,14 @@ if __name__ == "__main__":
     test_acc, test_loss, test_top_k, test_conf_matr, test_top_1_norm = test(test_loader, labels, top_k)
 
     #Generates and save the confusion matrix for all the dataset
-    save_conf_matr(train_conf_matr, "Train", results_path, now)
-    save_conf_matr(val_conf_matr, "Val", results_path, now)
-    save_conf_matr(test_conf_matr, "Test", results_path, now)
+    
 
     #Export results on wandb
     if wandb_key != "":
         # log metrics to wandb #TODO
+        save_conf_matr(train_conf_matr, args.dataset, classes, "Train", results_path, now)
+        save_conf_matr(val_conf_matr, args.dataset, classes, "Val", results_path, now)
+        save_conf_matr(test_conf_matr, args.dataset, classes, "Test", results_path, now)
         wandb.log({
                 "test_acc": test_acc, 
                 "test_loss": test_loss, 

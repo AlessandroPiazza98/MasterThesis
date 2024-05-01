@@ -6,13 +6,15 @@ from torch_geometric.utils import to_undirected
 import pickle
 import numpy as np
 import argparse
+import warnings
+warnings.filterwarnings("error")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--dataset", type=str, default="Babel")
 parser.add_argument("-c", "--classes", type=str, default=60)
 parser.add_argument("-dt", "--data_size", type=str, default="Full")
 parser.add_argument("-sp", "--split", type=str, default="train")
-parser.add_argument("-dp", "--data_path", type=str, default="/data03/Datasets/Skeletal_data")
+parser.add_argument("-dp", "--data_path", type=str, default="/data03/Users/Alessandro/Data")#default="/data03/Datasets/Skeletal_data"
 parser.add_argument("-pp", "--pkl_path", type=str, default="/data03/Users/Alessandro/Data")
 parser.add_argument("-et", "--eval_type", type=str, default="subject")
 
@@ -82,11 +84,19 @@ class BabelConvToPyG:
 
         #Extract the features from x and put on a tensor: for Babel from (1,150,25,3) to (3750,3)
         x=x[0]
-        for i in range(frames):
+        for i in range(frames-1):
             for j in range(kpts):
-                nodes.append(np.append([i/frames],x[i][j]).tolist())
-                
-        x = torch.tensor(nodes)
+                disp_den = np.sqrt((x[i+1][j][0]-x[i][j][0])**2+(x[i+1][j][1]-x[i][j][1])**2+(x[i+1][j][2]-x[i][j][2])**2)
+                     #add velocity
+                if disp_den != 0:
+                    disp = [(x[i+1][j][0]-x[i][j][0])/disp_den,(x[i+1][j][1]-x[i][j][1])/disp_den,(x[i+1][j][2]-x[i][j][2])/disp_den]
+                else:
+                    disp = [0.,0.,0.]
+                nodes.append(np.append([(i)/frames],x[i][j]).tolist()+disp)
+        for j in range(kpts):
+            nodes.append(np.append([1],x[frames-1][j]).tolist()+[0.,0.,0.])
+
+        x = torch.tensor(nodes, dtype=torch.float32)
         
         data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
         return data
@@ -156,11 +166,18 @@ class NTUConvToPyG:
 
         #Extract the features from x and put on a tensor: for Babel from (1,150,25,3) to (3750,3)
         x=x[0]
-        for i in range(frames):
+        for i in range(frames-1):
             for j in range(kpts):
-                nodes.append(np.append([i/frames],x[i][j]).tolist())
-
-        x = torch.tensor(nodes)
+                disp_den = np.sqrt((x[i+1][j][0]-x[i][j][0])**2+(x[i+1][j][1]-x[i][j][1])**2+(x[i+1][j][2]-x[i][j][2])**2)
+                     #add velocity
+                if disp_den != 0:
+                    disp = [(x[i+1][j][0]-x[i][j][0])/disp_den,(x[i+1][j][1]-x[i][j][1])/disp_den,(x[i+1][j][2]-x[i][j][2])/disp_den]
+                else:
+                    disp = [0.,0.,0.]
+                nodes.append(np.append([(i)/frames],x[i][j]).tolist()+disp)
+        for j in range(kpts):
+            nodes.append(np.append([1],x[frames-1][j]).tolist()+[0.,0.,0.])
+        x = torch.tensor(nodes, dtype=torch.float32)
         
         data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
         return data
@@ -241,7 +258,7 @@ print("Dataset[0] shape: "+str(Dataset[0]))
 print("Total Dataset[0] nodes: "+str(Dataset[0].num_nodes))
 print("Total Dataset[0] edges: "+str(Dataset[0].num_edges))
 print("Total Dataset[0] node features: "+str(Dataset[0].num_node_features))
-print("Total Dataset[0] node features: "+str(Dataset[0].num_edge_features))
+print("Total Dataset[0] edge features: "+str(Dataset[0].num_edge_features))
 print("Dataset[0] have isolated nodes: "+str(Dataset[0].has_isolated_nodes()))
 print("Dataset[0] have self loops: "+str(Dataset[0].has_self_loops()))
 print("Dataset[0] is a directed graph: "+str(Dataset[0].is_directed()))
