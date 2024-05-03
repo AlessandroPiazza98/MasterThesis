@@ -15,13 +15,13 @@ import torch_geometric.transforms as T
 
 #Starting Graph Convolutional Network with GENConv layers
 
-def models_map(input_dim, output_dim, edge_dim, device, hidden): 
+def model_feat_map(input_dim, output_dim, edge_dim, device, hidden, dropout): 
     dict = {'GCN':GCN(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device),
             'Pool':Pool(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device),
             'GCN5':GCN5(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device),
             'SAGPool':SAGPool(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device),
-            'GCN2':GCN2(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim, hidden=hidden).to(device),
-            'GCNSAG':GCN2(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim, hidden=hidden).to(device)}
+            'GCN2':GCN2(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim, hidden=hidden, dropout=dropout).to(device),
+            'GCNSAG':GCN2(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim, hidden=hidden, dropout=dropout).to(device)}
     return dict
 
 def debug_p(string, debug):
@@ -45,8 +45,11 @@ class SAGPool(torch.nn.Module):
 
     
 
-    def forward(self, x, edge_index, edge_attr, batch, debug=False):
-        
+    def forward(self, data, batch, debug=False):
+        x = data.x
+        edge_attr = data.edge_attr
+        edge_index = data.edge_index
+
         debug_p(f'Start {x.shape}', debug)
         if torch.isnan(x).any():
               raise ValueError("Start")
@@ -120,8 +123,11 @@ class Pool(torch.nn.Module):
 
     
 
-    def forward(self, x, edge_index, edge_attr, batch, debug=False):
-        
+    def forward(self, data, batch, debug=False):
+        x = data.x
+        edge_attr = data.edge_attr
+        edge_index = data.edge_index
+
         debug_p(f'Start {x.shape}', debug)
         x = self.conv1(x, edge_index, edge_attr)
         debug_p(f'Conv1 {x.shape}', debug)
@@ -194,7 +200,6 @@ class OldPool2(torch.nn.Module):
         debug_p(f'Lin2 {x.shape}', debug)
 
         return x
-
 
 class OldPool(torch.nn.Module):
     def __init__(self, in_dim, out_dim, edge_dim, dropout=0.2):
@@ -299,8 +304,11 @@ class GCN(torch.nn.Module):
 
     
 
-    def forward(self, x, edge_index, edge_attr, batch, debug=False):
-        
+    def forward(self, data, batch, debug=False):
+        x = data.x
+        edge_attr = data.edge_attr
+        edge_index = data.edge_index
+
         debug_p(f'Start {x.shape}', debug)
         x = self.conv1(x, edge_index, edge_attr)
         debug_p(f'Conv1 {x.shape}', debug)
@@ -328,7 +336,7 @@ class GCN(torch.nn.Module):
         return x
 
 class GCN2(torch.nn.Module):
-    def __init__(self, in_dim, out_dim, edge_dim, hidden, dropout=0.1):
+    def __init__(self, in_dim, out_dim, edge_dim, hidden, dropout):
         super().__init__()
         self.dropout = dropout
         self.conv1 = GENConv(in_dim, hidden, edge_dim=edge_dim)
@@ -343,8 +351,12 @@ class GCN2(torch.nn.Module):
 
     
 
-    def forward(self, x, edge_index, edge_attr, batch, debug=False):
+    def forward(self, data, batch, debug=False):
         
+        x = data.x
+        edge_attr = data.edge_attr
+        edge_index = data.edge_index
+
         debug_p(f'Start {x.shape}', debug)
         x = self.conv1(x, edge_index, edge_attr)
         debug_p(f'Conv1 {x.shape}', debug)
@@ -366,20 +378,10 @@ class GCN2(torch.nn.Module):
         debug_p(f'GMPool {x.shape}', debug)
        
         x = F.dropout(x, p=self.dropout)
-        x = self.dense1(x)
-        debug_p(f'Lin1 {x.shape}', debug)
-
-        x = self.dense2(x)
-        debug_p(f'Lin2 {x.shape}', debug)
-
-        x = self.dense3(x)
-        debug_p(f'Lin3 {x.shape}', debug)
-
-        x = torch.log_softmax(x, dim=-1)
         return x
 
 class GCNSAG(torch.nn.Module):
-    def __init__(self, in_dim, out_dim, edge_dim, hidden, dropout=0.1):
+    def __init__(self, in_dim, out_dim, edge_dim, hidden, dropout):
         super().__init__()
         self.dropout = dropout
         self.conv1 = GENConv(in_dim, hidden, edge_dim=edge_dim)
@@ -389,14 +391,14 @@ class GCNSAG(torch.nn.Module):
         self.conv3 = GENConv(hidden*2, hidden*4, edge_dim=edge_dim)
         self.norm3 = nn.BatchNorm1d(hidden*4)
         self.pool1 = SAGPooling(hidden*4, ratio=0.5)
-        self.dense1 = nn.Linear(hidden*4, hidden*2)
-        self.dense2 = nn.Linear(hidden*2, hidden)
-        self.dense3 = nn.Linear(hidden, out_dim)
 
     
 
-    def forward(self, x, edge_index, edge_attr, batch, debug=False):
-        
+    def forward(self, data, batch, debug=False):
+        x = data.x
+        edge_attr = data.edge_attr
+        edge_index = data.edge_index
+
         debug_p(f'Start {x.shape}', debug)
         x = self.conv1(x, edge_index, edge_attr)
         debug_p(f'Conv1 {x.shape}', debug)
@@ -421,16 +423,6 @@ class GCNSAG(torch.nn.Module):
         debug_p(f'GMPool {x.shape}', debug)
        
         x = F.dropout(x, p=self.dropout)
-        x = self.dense1(x)
-        debug_p(f'Lin1 {x.shape}', debug)
-
-        x = self.dense2(x)
-        debug_p(f'Lin2 {x.shape}', debug)
-
-        x = self.dense3(x)
-        debug_p(f'Lin3 {x.shape}', debug)
-
-        x = torch.log_softmax(x, dim=-1)
         return x
 
 class GCN5(torch.nn.Module):
@@ -446,7 +438,10 @@ class GCN5(torch.nn.Module):
         self.dense2 = nn.Linear(512, 256)
         self.dense3 = nn.Linear(256, out_dim)
 
-    def forward(self, x, edge_index, edge_attr, batch, debug=False):
+    def forward(self, data, batch, debug=False):
+        x = data.x
+        edge_attr = data.edge_attr
+        edge_index = data.edge_index
 
         debug_p(f'Start {x.shape}', debug)
         x = self.conv1(x, edge_index, edge_attr)
@@ -484,3 +479,29 @@ class GCN5(torch.nn.Module):
         debug_p(f'Lin3 {x.shape}', debug)
         x = torch.log_softmax(x, dim=-1)
         return x
+
+class Classifier(torch.nn.Module):
+    def __init__(self, out_dim, hidden, dropout):
+        super().__init__()
+        self.dropout = dropout
+        self.dense1 = nn.Linear(hidden*4, hidden*2)
+        self.dense2 = nn.Linear(hidden*2, hidden)
+        self.dense3 = nn.Linear(hidden, out_dim)
+    
+    def forward(self, x, debug=False):
+        x = x
+
+        debug_p(f'Start {x.shape}', debug)
+        x = self.dense1(x)
+        debug_p(f'Lin1 {x.shape}', debug)
+        x = F.dropout(x, p=self.dropout)
+
+        x = self.dense2(x)
+        debug_p(f'Lin2 {x.shape}', debug)
+        x = F.dropout(x, p=self.dropout)
+
+        x = self.dense3(x)
+        debug_p(f'Lin3 {x.shape}', debug)
+
+        x = torch.log_softmax(x, dim=-1)
+        return x    

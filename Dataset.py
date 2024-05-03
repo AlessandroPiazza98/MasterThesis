@@ -252,13 +252,15 @@ elif args.dataset=="NTU":
             print(str(int(100*i/N))+"% of data pre-processing")
 
 #Make a group of checks on the first graph
-print("The dataset "+args.dataset+str(args.classes)+"_"+args.split+"_"+args.data_size+" is imported and pre-processed")
+print("The dataset "+args.dataset+str(args.classes)+"_"+args.split+"_"+args.data_size+" is imported and pre-processed and is made of "+str(N)+" data")
 Dataset[0].validate(raise_on_error=True)
 print("Dataset[0] shape: "+str(Dataset[0]))
 print("Total Dataset[0] nodes: "+str(Dataset[0].num_nodes))
 print("Total Dataset[0] edges: "+str(Dataset[0].num_edges))
 print("Total Dataset[0] node features: "+str(Dataset[0].num_node_features))
 print("Total Dataset[0] edge features: "+str(Dataset[0].num_edge_features))
+print("Total Dataset[0] data: "+str(Dataset[0].x))
+print("Total Dataset[0] class: "+str(Dataset[0].y))
 print("Dataset[0] have isolated nodes: "+str(Dataset[0].has_isolated_nodes()))
 print("Dataset[0] have self loops: "+str(Dataset[0].has_self_loops()))
 print("Dataset[0] is a directed graph: "+str(Dataset[0].is_directed()))

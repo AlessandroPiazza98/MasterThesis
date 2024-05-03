@@ -45,6 +45,8 @@ parser.add_argument('-m', "--model", type=str, default="GCN") #Model to consider
 parser.add_argument('-l', "--loss", type=str, default="CE") #Loss function
 parser.add_argument('-lr', "--learn_rate", type=float, default=0.001) #Learning rate
 parser.add_argument('-hn', "--hidden", type=int, default=64) #Hidden layers if requested
+parser.add_argument('-dr', "--dropout", type=float, default=0.1) #Dropout considered
+parser.add_argument('-re', "--regularization", type=float, default=0.00001) #Weight decay
 
 args = parser.parse_args() #Initialize parser
 
@@ -65,7 +67,9 @@ print(tabulate.tabulate([
                 ["Model",args.model], 
                 ["Hidden",args.hidden],
                 ["Loss",args.loss],   
-                ["Learning Rate",args.learn_rate],                           
+                ["Learning Rate",args.learn_rate],
+                ["Dropout",args.dropout],  
+                ["Regularization",args.regularization],                         
                 ], headers=['Argument', 'Value']))
 print()
 
@@ -90,6 +94,8 @@ if __name__ == "__main__":
     loss_key = args.loss
     lr = args.learn_rate
     hidden = args.hidden
+    dropout = args.dropout
+    reg = args.regularization
 
     tz = datetime.timezone.utc
     ft = "%Y-%m-%dT%H:%M:%S%z"
@@ -172,9 +178,10 @@ if __name__ == "__main__":
                 print("\nDictionary of class weights in Training Set:")
                 print(weight_dict)
     #Define your model and optimizer, taking the model from the models_map dictionary on Models.py 
-    MODELS_MAP = models_map(input_dim, output_dim, edge_dim, device, hidden) # type: ignore
+    MODELS_MAP = model_feat_map(input_dim, output_dim, edge_dim, device, hidden, dropout) # type: ignore
     model = MODELS_MAP[model_key]
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.00001) #TODO go in deeper details for optimizer
+    classifier = Classifier(output_dim, hidden, dropout).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=reg) #TODO go in deeper details for optimizer
     #Select different criterions only if size is Full to avoid mismatch in the number of labels
     if args.data_size == "Full":
         criterion = select_loss(loss_key, class_w)
@@ -184,6 +191,7 @@ if __name__ == "__main__":
     #Print the size of the data after each layer in the network, making a batch to pass through a model identical to the one that will be trained
     if args.debug:
         model_debug = MODELS_MAP[model_key]
+        classifier_debug = Classifier(output_dim, hidden, dropout).to(device)
         model_debug.train()
         data = next(iter(train_loader)) #Pick a single batch
         print("\nThe debugging batch has this shape:")
@@ -191,7 +199,8 @@ if __name__ == "__main__":
         print("\nAfter each layer this is the expected size of the data:")
         optimizer.zero_grad()  # Clear gradients.
         data = data.to(device)
-        out = model_debug(data.x, data.edge_index, data.edge_attr, data.batch, debug=args.debug) #Run model on debug mode
+        features = model_debug(data, data.batch, debug=args.debug) #Run model on debug mode
+        out = classifier_debug(features, debug=args.debug)
         print("\n##### DEBUG MODE OFF #####\n")
         #loss_func = BalancedLoss(samples_per_cls=class_freq, no_of_classes=classes,
         #                     loss_type='cross-entropy', beta=0.99, gamma=0.5, device=device, label_smoothing=0.0) #TODO Debug dimensions
@@ -218,7 +227,9 @@ if __name__ == "__main__":
             "loss": loss_key,
             "learn_rate": lr,
             "layers": model,
-            "hidden": hidden
+            "hidden": hidden,
+            "dropout" : dropout,
+            "regularization" : reg
             }
         )
 
@@ -228,9 +239,8 @@ if __name__ == "__main__":
         for data in train_loader:  #Iterate in batches over the training dataset.  
             optimizer.zero_grad()  #Clear gradients.
             data = data.to(device)
-            out = model(data.x, data.edge_index, data.edge_attr, data.batch) #Perform a single forward pass obtaining network output
-            #loss_func = BalancedLoss(samples_per_cls=class_freq, no_of_classes=classes,
-            #                     loss_type='cross-entropy', beta=0.99, gamma=0.5, device=device, label_smoothing=0.0) #TODO Debug dimensions
+            features = model(data, data.batch) #Perform a single forward pass obtaining network output
+            out = classifier(features)
             loss = criterion(out, data.y)  # Compute the loss.
             loss.backward()  #Derive gradients.
             optimizer.step()  #Update parameters based on gradients.
@@ -247,7 +257,8 @@ if __name__ == "__main__":
         count_by_label = np.zeros(len(labels))
         for data in loader:  #Iterate in batches over the  dataset
             data = data.to(device) #Move data on device
-            out = model(data.x, data.edge_index, data.edge_attr, data.batch) #Obtain predictions 
+            features = model(data, data.batch) #Obtain predictions 
+            out = classifier(features) #Obtain predictions 
             loss = criterion(out, data.y) 
             loss_ += loss.item() #Update loss
             pred = out.argmax(dim=1)  #Use the class with highest value as predicitons
