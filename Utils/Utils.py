@@ -1,5 +1,6 @@
 #Torch
 import torch
+from torch_geometric.data import Data
 
 #SkLearn Utilities
 from sklearn.metrics import ConfusionMatrixDisplay #In particular some performances utilities
@@ -7,6 +8,12 @@ from sklearn.metrics import ConfusionMatrixDisplay #In particular some performan
 #I/O Utilities
 import matplotlib.pyplot as plt #For plots
 import wandb
+import matplotlib.pylab as pylab
+
+params = {'legend.fontsize': 'x-large',
+         'axes.labelsize': 'x-large',
+         'axes.titlesize':'x-large'}
+pylab.rcParams.update(params)
 
 def debug(dataset):
     dataset[0].validate(raise_on_error=True)
@@ -22,13 +29,16 @@ def debug(dataset):
     print()
 
 def save_conf_matr(Dataset, dataset, classes, label, results_path, now):
-    name = "Conf_Matr_"+dataset+str(classes)+label+"_"+now+".png"
+    name = "Conf_Matr_"+dataset+str(classes)+label+"_"+now
+    title = "Confusion Matrix "+dataset+"_"+str(classes)+"_"+label
     disp = ConfusionMatrixDisplay(Dataset)
     disp.plot(include_values=False, xticks_rotation=60)
-    plt.title(name)
+    plt.title(title)
     fig = plt.gcf()
     fig.set_size_inches(20, 20)
-    plt.savefig(results_path+"/Conf_Matr_"+dataset+str(classes)+label+"_"+now+".png", dpi=300)
+    plt.savefig(results_path+"/"+name+".png", dpi=300)
+    plt.savefig(results_path+"/"+name+".eps", dpi=300, format="eps")
+
     wandb.log({name: plt})
 
 def select_loss(loss_key, class_w):
@@ -61,3 +71,17 @@ def count_matching_labels(arr1, arr2, total_labels):
     
     label_occurrences = [label_counts.get(i, 0) for i in total_labels]
     return label_occurrences
+
+def win_split(data, a, b):
+    kpts=25
+    x = data.x[a*kpts:(b+1)*kpts,:]
+
+    edge_index = data.edge_index
+    mask = (edge_index[0] >= a*kpts) & (edge_index[0] <= (b+1)*kpts-1) & (edge_index[1] >= (a)*kpts) & (edge_index[1] <= (b+1)*kpts-1)
+    edge_index = torch.stack([edge_index[0][mask],edge_index[1][mask]])
+
+    edge_attr = data.edge_attr[mask]
+    y = data.y
+
+    data_out = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+    return data_out
