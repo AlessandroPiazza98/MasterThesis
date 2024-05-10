@@ -7,11 +7,14 @@ from torch_geometric.utils import to_undirected
 import pickle
 import numpy as np
 import argparse
+from Utils.Utils import * #Import all functions from Utils.py
+
 import warnings
 import sys
+
 #torch.set_printoptions(threshold=sys.maxsize)
 
-warnings.filterwarnings("error")
+warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--dataset", type=str, default="Babel")
@@ -245,7 +248,7 @@ elif args.dataset=="NTU":
     elif args.data_size=="Medium":
         N=2000
     elif args.data_size=="Small":
-        N=5
+        N=200
 
     perc_print = np.linspace(1, N, 100).astype(int)
     for i in range(N):
@@ -268,16 +271,6 @@ print("Total Dataset[0] class: "+str(Dataset[0].y))
 print("Dataset[0] have isolated nodes: "+str(Dataset[0].has_isolated_nodes()))
 print("Dataset[0] have self loops: "+str(Dataset[0].has_self_loops()))
 print("Dataset[0] is a directed graph: "+str(Dataset[0].is_directed()))
-
-#TODO end to develop the function and move on Utils
-def windowing(data, k, overlap=0):
-    kpts = 25
-    windowed_data = []
-    frames = int(len(data.x)/kpts)
-    print(frames)
-    return windowed_data
-
-windowing(Dataset[0],10)
 
 with open(args.pkl_path+'/'+args.dataset+str(args.classes)+"_"+args.split+"_"+args.data_size+".pkl", 'wb') as file:
     pickle.dump(Dataset, file)

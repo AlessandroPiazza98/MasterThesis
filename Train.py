@@ -45,8 +45,11 @@ parser.add_argument('-m', "--model", type=str, default="GCN") #Model to consider
 parser.add_argument('-l', "--loss", type=str, default="CE") #Loss function
 parser.add_argument('-lr', "--learn_rate", type=float, default=0.001) #Learning rate
 parser.add_argument('-hn', "--hidden", type=int, default=64) #Hidden layers if requested
-parser.add_argument('-dr', "--dropout", type=float, default=0.1) #Dropout considered
-parser.add_argument('-re', "--regularization", type=float, default=0.00001) #Weight decay
+parser.add_argument('-dr', "--dropout", type=float, default=0.1) #Dropout considered on GCN2 and GCNSAG models
+parser.add_argument('-re', "--regularization", type=float, default=0.00001) #Weight decay for regularization
+parser.add_argument('-nt', "--ntoken", type=int, default=10) #Hidden layers if requested
+parser.add_argument('-to', "--token_overlap", type=int, default=4) #Hidden layers if requested
+
 
 args = parser.parse_args() #Initialize parser
 
@@ -69,7 +72,9 @@ print(tabulate.tabulate([
                 ["Loss",args.loss],   
                 ["Learning Rate",args.learn_rate],
                 ["Dropout",args.dropout],  
-                ["Regularization",args.regularization],                         
+                ["Regularization",args.regularization], 
+                ["Token per graph",args.ntoken],  
+                ["Token overlap",args.token_overlap],                         
                 ], headers=['Argument', 'Value']))
 print()
 
@@ -96,6 +101,8 @@ if __name__ == "__main__":
     hidden = args.hidden
     dropout = args.dropout
     reg = args.regularization
+    ntoken = args.ntoken
+    token_overlap = args.token_overlap
 
     tz = datetime.timezone.utc
     ft = "%Y-%m-%dT%H:%M:%S%z"
@@ -180,7 +187,7 @@ if __name__ == "__main__":
     #Define your model and optimizer, taking the model from the models_map dictionary on Models.py 
     MODELS_MAP = model_feat_map(input_dim, output_dim, edge_dim, device, hidden, dropout) # type: ignore
     model = MODELS_MAP[model_key]
-    classifier = Classifier(output_dim, hidden, dropout).to(device)
+    classifier = Classifier(output_dim, hidden, ntoken, dropout).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=reg) #TODO go in deeper details for optimizer
     #Select different criterions only if size is Full to avoid mismatch in the number of labels
     if args.data_size == "Full":
@@ -191,16 +198,20 @@ if __name__ == "__main__":
     #Print the size of the data after each layer in the network, making a batch to pass through a model identical to the one that will be trained
     if args.debug:
         model_debug = MODELS_MAP[model_key]
-        classifier_debug = Classifier(output_dim, hidden, dropout).to(device)
+        classifier_debug = Classifier(output_dim, hidden, ntoken, dropout).to(device)
         model_debug.train()
         data = next(iter(train_loader)) #Pick a single batch
         print("\nThe debugging batch has this shape:")
         print(data) # Print size of the batch  
         print("\nAfter each layer this is the expected size of the data:")
         optimizer.zero_grad()  # Clear gradients.
+        tokens = []
         data = data.to(device)
-        features = model_debug(data, data.batch, debug=args.debug) #Run model on debug mode
-        out = classifier_debug(features, debug=args.debug)
+        windowed_data = windowing(data, ntoken, token_overlap)
+        for data in windowed_data:
+            tokens.append(model_debug(data, data.batch, debug=args.debug)) #Perform a single forward pass obtaining network output
+        combined_tokens = torch.cat(tokens, dim=1)
+        out = classifier_debug(combined_tokens, debug=args.debug)
         print("\n##### DEBUG MODE OFF #####\n")
         #loss_func = BalancedLoss(samples_per_cls=class_freq, no_of_classes=classes,
         #                     loss_type='cross-entropy', beta=0.99, gamma=0.5, device=device, label_smoothing=0.0) #TODO Debug dimensions
@@ -238,9 +249,13 @@ if __name__ == "__main__":
         model.train()
         for data in train_loader:  #Iterate in batches over the training dataset.  
             optimizer.zero_grad()  #Clear gradients.
+            tokens = []
             data = data.to(device)
-            features = model(data, data.batch) #Perform a single forward pass obtaining network output
-            out = classifier(features)
+            windowed_data = windowing(data, ntoken, token_overlap)
+            for data in windowed_data:
+                tokens.append(model(data, data.batch)) #Perform a single forward pass obtaining network output
+            combined_tokens = torch.cat(tokens, dim=1)
+            out = classifier(combined_tokens)
             loss = criterion(out, data.y)  # Compute the loss.
             loss.backward()  #Derive gradients.
             optimizer.step()  #Update parameters based on gradients.
@@ -256,9 +271,13 @@ if __name__ == "__main__":
         acc_by_label = np.zeros(len(labels))
         count_by_label = np.zeros(len(labels))
         for data in loader:  #Iterate in batches over the  dataset
-            data = data.to(device) #Move data on device
-            features = model(data, data.batch) #Obtain predictions 
-            out = classifier(features) #Obtain predictions 
+            tokens = []
+            data = data.to(device)
+            windowed_data = windowing(data, ntoken, token_overlap)
+            for data in windowed_data:
+                tokens.append(model(data, data.batch)) #Perform a single forward pass obtaining network output
+            combined_tokens = torch.cat(tokens, dim=1)
+            out = classifier(combined_tokens)
             loss = criterion(out, data.y) 
             loss_ += loss.item() #Update loss
             pred = out.argmax(dim=1)  #Use the class with highest value as predicitons

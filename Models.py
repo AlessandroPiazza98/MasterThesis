@@ -12,6 +12,7 @@ from torch_geometric.nn import GENConv, global_mean_pool, global_add_pool, globa
 from torch_geometric.data import Data
 import torch_geometric.transforms as T
 
+from loguru import logger
 
 #Starting Graph Convolutional Network with GENConv layers
 
@@ -345,10 +346,6 @@ class GCN2(torch.nn.Module):
         self.norm2 = nn.BatchNorm1d(hidden*2)
         self.conv3 = GENConv(hidden*2, hidden*4, edge_dim=edge_dim)
         self.norm3 = nn.BatchNorm1d(hidden*4)
-        self.dense1 = nn.Linear(hidden*4, hidden*2)
-        self.dense2 = nn.Linear(hidden*2, hidden)
-        self.dense3 = nn.Linear(hidden, out_dim)
-
     
 
     def forward(self, data, batch, debug=False):
@@ -481,10 +478,10 @@ class GCN5(torch.nn.Module):
         return x
 
 class Classifier(torch.nn.Module):
-    def __init__(self, out_dim, hidden, dropout):
+    def __init__(self, out_dim, hidden, tokens, dropout):
         super().__init__()
         self.dropout = dropout
-        self.dense1 = nn.Linear(hidden*4, hidden*2)
+        self.dense1 = nn.Linear(hidden*4*tokens, hidden*2)
         self.dense2 = nn.Linear(hidden*2, hidden)
         self.dense3 = nn.Linear(hidden, out_dim)
     
@@ -505,3 +502,171 @@ class Classifier(torch.nn.Module):
 
         x = torch.log_softmax(x, dim=-1)
         return x    
+
+class TransformerAndClassifier(nn.Module):
+    def __init__(self, d_model: int, nhead: int, num_encoder_layers: int, dim_feedforward: int, dropout: float,
+                 max_len: int, classifier_layer_size: int = 64, batch_first=True, classes=10, norm_first=False, *args,
+                 **kwargs
+                 ):
+        super(TransformerAndClassifier, self).__init__()
+        self.transformer = Transformer(d_model, nhead, num_encoder_layers, dim_feedforward, dropout,
+                                       max_len, batch_first, norm_first)
+        self.classifier = ClassifierHead(d_model, classes, dropout=dropout, linear_size=classifier_layer_size)
+
+    def forward(self, x):
+        cls_token = self.transformer(x)
+        x = self.classifier(cls_token)
+        return x
+
+class PositionalEncoding(nn.Module):
+
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Arguments:
+            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        logger.debug(f'POSITIONAL ENCODING')
+        logger.debug(f'x.shape: {x.shape}')
+        logger.debug(f'pe.shape: {self.pe.shape}')
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+
+class Transformer(nn.Module):
+
+    # FROM THE ATTENTION LAYER
+    # key_padding_mask: If specified, a mask of shape :math:`(N, S)` indicating which elements within ``key``
+    #             to ignore for the purpose of attention (i.e. treat as "padding"). For unbatched `query`, shape should be :math:`(S)`.
+    #             Binary and float masks are supported.
+    #             For a binary mask, a ``True`` value indicates that the corresponding ``key`` value will be ignored for
+    #             the purpose of attention. For a float mask, it will be directly added to the corresponding ``key`` value.
+    def __init__(self, d_model: int, nhead: int, num_encoder_layers: int, dim_feedforward: int, dropout: float,
+                 max_len: int, batch_first=True, norm_first=False, *args, **kwargs
+                 ):
+        super().__init__(*args)
+        self.norm_first = norm_first
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward,
+                                                   dropout=dropout, batch_first=batch_first, norm_first=self.norm_first)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
+        self.positional_encoder = PositionalEncoding(d_model, dropout=0.0, max_len=max_len)
+
+        # self.fully_connected = nn.Linear(d_model, classes)
+        # self.linear_classifier = nn.Linear(d_model, d_model)
+        # self.pooling = nn.AvgPool1d(kernel_size=kwargs['num_words'], stride=1)
+        self.softmax = nn.LogSoftmax(dim=1)
+
+        self.class_token = torch.nn.Parameter(
+                torch.randn(1, 1, d_model), requires_grad=True)
+        torch.nn.init.normal_(self.class_token, std=0.02)
+        self.input_layer = nn.Linear(d_model, d_model)
+        self.input_layer.weight.data.normal_(mean=0., std=1.)
+        self.input_layer.bias.data.zero_()
+
+        self.batch_first = batch_first
+        self.features = d_model
+
+        # self.pos_embedding = torch.nn.Parameter(
+        #         torch.randn(1, 2, n_channels)
+        #         )
+
+    def forward(self, src: torch.Tensor, mask: torch.Tensor = None,
+                src_key_padding_mask: torch.Tensor = None, ) -> torch.Tensor:
+        # cls_token = torch.randn((x.shape[0], 1, x.shape[-1]), device=x.device)
+        # tokens = torch.column_stack((cls_token, x))
+        logger.debug(f'Transformer input shape: {src.shape}')
+        logger.debug(
+            f'Transformer input min: {torch.min(src)}, max: {torch.max(src)}, mean: {torch.mean(src)}, std: {torch.std(src)}')
+
+        if torch.any(src.isnan()):
+            logger.debug(f'Transf input has nan: {torch.any(src.isnan())}')
+            raise NanError('NaN in Transformer input')
+
+        # src = torch.nn.functional.batch_norm(src, torch.zeros(42, device=device), torch.ones(42, device=device))
+        # logger.debug(f'Transformer input shape: {src.shape}')
+        # logger.debug(f'Transformer input min: {torch.min(src)}, max: {torch.max(src)}, mean: {torch.mean(src)}, std: {torch.std(src)}')
+
+        logger.debug(f'features {self.features}')
+        # src = torch.movedim(src, (0, 1, 2), (0, 2, 1))
+        # src = nn.BatchNorm1d(self.features, affine=True, device=device)(src)
+        # src = torch.movedim(src, (0,1,2), (0,2,1))
+        x = self.input_layer(src)
+
+        if torch.any(x.isnan()):
+            logger.error(f'Input Layers output x has nan: {torch.any(x.isnan())}')
+            logger.error(
+                f'input in transformer linear layer was: mean = {torch.mean(src)}, std = {torch.std(src)}, min = {torch.min(src)}, max = {torch.max(src)}')
+            logger.error(f'weight in transformer linear layer has nans? {torch.any(self.input_layer.weight.isnan())}')
+            raise NanError('NaN in Transformer input after Lin layer')
+
+        # ADD CLS token
+        x = torch.cat([self.class_token.expand(x.shape[0], -1, -1), x], dim=1)
+        # ADD CLS Token in masks
+        if src_key_padding_mask is not None:
+            src_key_padding_mask = torch.cat(
+                    [torch.logical_not(torch.ones((src_key_padding_mask.shape[0], 1), dtype=torch.bool, device=device)),
+                     src_key_padding_mask], dim=1)
+            logger.debug(f'transformer mask: {src_key_padding_mask.shape}')
+        logger.debug(f'x expanded with CLS x.shape: {x.shape}')
+
+        if torch.any(x.isnan()):
+            logger.debug(f'Before Positional encoding x has nan: {torch.any(x.isnan())}')
+            raise ValueError('NaN in Transformer Before Positional encoding')
+        if self.batch_first:
+            x = self.positional_encoder(x.permute(1, 0, 2))
+            x = x.permute(1, 0, 2)
+        else:
+            x = self.positional_encoder(x)
+        if torch.any(x.isnan()):
+            logger.debug(f'Positional Encoded x has nan: {torch.any(x.isnan())}')
+            raise ValueError('NaN in Transformer After Positional encoding')
+        logger.debug(f'Positional encoding x.shape: {x.shape}')
+        x = self.transformer_encoder(x, mask, src_key_padding_mask=src_key_padding_mask)
+
+        # x = self.pooling(x.permute(0,2,1)).permute(0, 2, 1) # pool on the words dimensions -> it becomes one word
+        logger.debug(f'Transformer encoder x.shape: {x.shape}')
+        x = x[:, 0, :]  # extract CLS
+        logger.debug(f'CLS extracted x.shape: {x.shape}')
+        if torch.any(x.isnan()):
+            raise ValueError('NaN in Transformer CLS token')
+        # x = self.linear_classifier(x)
+        # x = nn.ReLU()(x)
+        # x = self.fully_connected(x)
+        # x = torch.squeeze(x)
+
+        return x
+
+class ClassifierHead(nn.Module):
+    def __init__(self, feature_input, out_classes, linear_size=64, hidden_size=256, dropout=0.1, linear=False):
+        super().__init__()
+        self.linear_classifier = linear
+        self.linear_size = linear_size
+        self.feature_input = feature_input
+        self.output_size = out_classes
+
+        self.linear = nn.Linear(feature_input, hidden_size, bias=True)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(hidden_size, linear_size)
+        self.activation = nn.ReLU()
+        self.output = nn.Linear(linear_size, out_classes, bias=True)
+
+        if self.linear_classifier:
+            self.layers = nn.Sequential(nn.Linear(feature_input, out_classes, bias=True))
+        else:
+            self.layers = nn.Sequential(self.linear, self.dropout, self.activation, self.linear2, self.dropout,
+                                        self.activation, self.output)
+
+    def forward(self, x):
+        logger.debug(f"input in classifier head {x.shape}")
+        x = self.layers(x)
+        logger.debug(f"output in classifier head {x.shape}")
+        return x
