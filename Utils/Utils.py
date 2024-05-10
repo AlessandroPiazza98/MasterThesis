@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt #For plots
 import wandb
 import matplotlib.pylab as pylab
 
+
 params = {'legend.fontsize': 'x-large',
          'axes.labelsize': 'x-large',
          'axes.titlesize':'x-large'}
@@ -79,9 +80,26 @@ def win_split(data, a, b):
     edge_index = data.edge_index
     mask = (edge_index[0] >= a*kpts) & (edge_index[0] <= (b+1)*kpts-1) & (edge_index[1] >= (a)*kpts) & (edge_index[1] <= (b+1)*kpts-1)
     edge_index = torch.stack([edge_index[0][mask],edge_index[1][mask]])
+    edge_index = torch.sub(edge_index, a*kpts)
 
     edge_attr = data.edge_attr[mask]
     y = data.y
 
     data_out = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
     return data_out
+
+def windowing(data, k, overlap=0):
+    kpts = 25
+    windowed_data = []
+    frames = int((len(data.x)/kpts)/k)
+    for i in range(k):
+        if i ==0:
+            a = frames*i
+        else:
+            a = frames*i-int(overlap/2)
+        if i == k-1:
+            b = frames*(i+1)
+        else:
+            b = frames*(i+1)+int(overlap/2)
+        windowed_data.append(win_split(data, a, b))
+    return windowed_data
