@@ -481,9 +481,9 @@ class Classifier(torch.nn.Module):
     def __init__(self, out_dim, hidden, tokens, dropout):
         super().__init__()
         self.dropout = dropout
-        self.dense1 = nn.Linear(hidden*4*tokens, hidden*2)
-        self.dense2 = nn.Linear(hidden*2, hidden)
-        self.dense3 = nn.Linear(hidden, out_dim)
+        self.dense1 = nn.Linear(hidden*4*tokens, hidden*2*tokens)
+        self.dense2 = nn.Linear(hidden*2*tokens, hidden*tokens)
+        self.dense3 = nn.Linear(hidden*tokens, out_dim)
     
     def forward(self, x, debug=False):
         x = x
