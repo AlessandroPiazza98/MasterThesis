@@ -478,6 +478,33 @@ class GCN5(torch.nn.Module):
         return x
 
 class Classifier(torch.nn.Module):
+    def __init__(self, out_dim, hidden, dropout):
+        super().__init__()
+        self.dropout = dropout
+        self.dense1 = nn.Linear(hidden*4, hidden*2)
+        self.dense2 = nn.Linear(hidden*2, hidden)
+        self.dense3 = nn.Linear(hidden, out_dim)
+    
+    def forward(self, x, debug=False):
+        x = x
+
+        debug_p(f'Start {x.shape}', debug)
+        x = self.dense1(x)
+        debug_p(f'Lin1 {x.shape}', debug)
+        x = F.dropout(x, p=self.dropout)
+
+        x = self.dense2(x)
+        debug_p(f'Lin2 {x.shape}', debug)
+        x = F.dropout(x, p=self.dropout)
+
+        x = self.dense3(x)
+        debug_p(f'Lin3 {x.shape}', debug)
+
+        x = torch.log_softmax(x, dim=-1)
+        return x    
+
+
+class ClassifierWin(torch.nn.Module):
     def __init__(self, out_dim, hidden, tokens, dropout):
         super().__init__()
         self.dropout = dropout

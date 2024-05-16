@@ -50,7 +50,7 @@ parser.add_argument('-dr', "--dropout", type=float, default=0.1) #Dropout consid
 parser.add_argument('-re', "--regularization", type=float, default=0.00001) #Weight decay for regularization
 parser.add_argument('-nt', "--ntoken", type=int, default=10) #Hidden layers if requested
 parser.add_argument('-to', "--token_overlap", type=int, default=4) #Hidden layers if requested
-
+parser.add_argument('-learn_features', action='store_true') #Activate debug mode that prints some useful information
 
 args = parser.parse_args() #Initialize parser
 
@@ -75,7 +75,8 @@ print(tabulate.tabulate([
                 ["Dropout",args.dropout],  
                 ["Regularization",args.regularization], 
                 ["Token per graph",args.ntoken],  
-                ["Token overlap",args.token_overlap],                         
+                ["Token overlap",args.token_overlap],  
+                ["Learn Features", args.debug],                       
                 ], headers=['Argument', 'Value']))
 print()
 
@@ -189,7 +190,10 @@ if __name__ == "__main__":
     #Define your model and optimizer, taking the model from the models_map dictionary on Models.py 
     MODELS_MAP = model_feat_map(input_dim, output_dim, edge_dim, device, hidden, dropout) # type: ignore
     model = MODELS_MAP[model_key]
-    classifier = Classifier(output_dim, hidden, ntoken, dropout).to(device)
+    if args.learn_features:
+        classifier = Classifier(output_dim, hidden, dropout).to(device)
+    else:
+        classifier = ClassifierWin(output_dim, hidden, ntoken, dropout).to(device)
     optimizer = torch.optim.Adam(list(model.parameters()) + list(classifier.parameters()), lr=lr, weight_decay=reg) #TODO go in deeper details for optimizer
     #Select different criterions only if size is Full to avoid mismatch in the number of labels
     if args.data_size == "Full":
@@ -199,24 +203,37 @@ if __name__ == "__main__":
 
     #Print the size of the data after each layer in the network, making a batch to pass through a model identical to the one that will be trained
     if args.debug:
-        model_debug = MODELS_MAP[model_key]
-        classifier_debug = Classifier(output_dim, hidden, ntoken, dropout).to(device)
-        model_debug.train()
-        data = next(iter(train_loader)) #Pick a single batch
-        print("\nThe debugging batch has this shape:")
-        print(data) # Print size of the batch  
-        print("\nAfter each layer this is the expected size of the data:")
-        optimizer.zero_grad()  # Clear gradients.
-        tokens = []
-        data = data.to(device)
-        windowed_data = windowing(data, ntoken, token_overlap)
-        for data in windowed_data:
-            tokens.append(model_debug(data, data.batch, debug=args.debug)) #Perform a single forward pass obtaining network output
-        combined_tokens = torch.cat(tokens, dim=1)
-        out = classifier_debug(combined_tokens, debug=args.debug)
-        print("\n##### DEBUG MODE OFF #####\n")
-        #loss_func = BalancedLoss(samples_per_cls=class_freq, no_of_classes=classes,
-        #                     loss_type='cross-entropy', beta=0.99, gamma=0.5, device=device, label_smoothing=0.0) #TODO Debug dimensions
+        if args.learn_features:
+            model_debug = MODELS_MAP[model_key]
+            classifier_debug = Classifier(output_dim, hidden, ntoken, dropout).to(device)
+            model_debug.train()
+            data = next(iter(train_loader)) #Pick a single batch
+            print("\nThe debugging batch has this shape:")
+            print(data) # Print size of the batch  
+            print("\nAfter each layer this is the expected size of the data:")
+            optimizer.zero_grad()  # Clear gradients.
+            tokens = []
+            data = data.to(device)
+            features = model_debug(data, data.batch) #Perform a single forward pass obtaining network output
+            out = classifier(features)
+            print("\n##### DEBUG MODE OFF #####\n")
+        else:
+            model_debug = MODELS_MAP[model_key]
+            classifier_debug = ClassifierWin(output_dim, hidden, ntoken, dropout).to(device)
+            model_debug.train()
+            data = next(iter(train_loader)) #Pick a single batch
+            print("\nThe debugging batch has this shape:")
+            print(data) # Print size of the batch  
+            print("\nAfter each layer this is the expected size of the data:")
+            optimizer.zero_grad()  # Clear gradients.
+            tokens = []
+            data = data.to(device)
+            windowed_data = windowing(data, ntoken, token_overlap)
+            for data in windowed_data:
+                tokens.append(model_debug(data, data.batch, debug=args.debug)) #Perform a single forward pass obtaining network output
+            combined_tokens = torch.cat(tokens, dim=1)
+            out = classifier_debug(combined_tokens, debug=args.debug)
+            
 
     #Print model configuration and number of epochs/batch_size
     print("Model Configuration:")
@@ -246,75 +263,117 @@ if __name__ == "__main__":
             }
         )
 
-    #Training funtion
-    def train():
-        model.train()
-        classifier.train()
-        for data in train_loader:  #Iterate in batches over the training dataset.
-            loss=0  
-            optimizer.zero_grad()  #Clear gradients.            
-            batched_tokens=torch.empty((0)).to(device)
-            data = data.to(device)
-            #print(f'Data, {data}')
-            y = data.y
-            #print(f'y, {y}')
-            for graph in data.to_data_list():
-                tokens = []
-                #print(f'Listed data, {data}')
-                windowed_data = windowing(graph, ntoken, token_overlap)
-                #print(f'Windowed_data, {windowed_data}')
-                for win_graph in windowed_data:
-                    representation = model(win_graph, win_graph.batch)
-                    tokens.append(representation)
-                    #print(f'Tokens, {tokens}') #Perform a single forward pass obtaining network output
-                combined_tokens = torch.cat(tokens, dim=1)
-                #print(f'Combined_Tokens, {combined_tokens}')
-                #print(f'Combined_Tokens Size, {combined_tokens.size()}')
-                batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
-                #print(f'Batched_Tokens, {batched_tokens}')
-                #print(f'Batched_Tokens Size, {batched_tokens.size()}')
-            out = classifier(batched_tokens)
-            loss = criterion(out, y) # Compute the loss.
-            loss.backward() #Derive gradients.
-            optimizer.step()  #Update parameters based on gradients.
-            
-    #Test function
-    def test(loader, labels,k):
-        model.eval()
-        classifier.eval()
-        #Initialize indexes and confusion matrix
-        correct = 0
-        loss_ = 0
-        top_k = 0
-        conf_matr = np.zeros((len(labels), len(labels)))
-        acc_by_label = np.zeros(len(labels))
-        count_by_label = np.zeros(len(labels))
-        for data in loader:  #Iterate in batches over the  dataset
-            loss=0
-            batched_tokens=torch.empty((0)).to(device)
-            data = data.to(device)
-            y = data.y
-            for graph in data.to_data_list():
-                tokens = []
-                windowed_data = windowing(graph, ntoken, token_overlap)
-                for win_graph in windowed_data:
-                    tokens.append(model(win_graph, win_graph.batch)) #Perform a single forward pass obtaining network output
-                combined_tokens = torch.cat(tokens, dim=1)
-                batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
-            out = classifier(batched_tokens)
-            loss = criterion(out, y) 
-            loss_ += loss.item() #Update loss
-            pred = out.argmax(dim=1)  #Use the class with highest value as predicitons
-            #Update indexes and confusion matrix values
-            correct += int((pred == y).sum())
-            top_k += top_k_accuracy_score(y.cpu().numpy(), out.detach().cpu().numpy(), labels=labels, normalize=False, k=k)
-            conf_matr += confusion_matrix(y.cpu().numpy(),pred.cpu().numpy(), labels=labels)
-              
-            count_by_label += count_labels(y.cpu().numpy(), labels)
-            acc_by_label += count_matching_labels(y.cpu().numpy(), pred, labels)
+    if args.learn_features:
+            #Training function
+        def train():
+            model.train()
+            for data in train_loader:  #Iterate in batches over the training dataset.  
+                optimizer.zero_grad()  #Clear gradients.
+                data = data.to(device)
+                features = model(data, data.batch) #Perform a single forward pass obtaining network output
+                out = classifier(features)
+                loss = criterion(out, data.y)  # Compute the loss.
+                loss.backward()  #Derive gradients.
+                optimizer.step()  #Update parameters based on gradients.
+            torch.save(model.state_dict(), results_path+"/Model.pt") #TODO handle export of the Model
+        #Test function
+        def test(loader, labels,k):
+            model.eval()
+            #Initialize indexes and confusion matrix
+            correct = 0
+            loss_ = 0
+            top_k = 0
+            conf_matr = np.zeros((len(labels), len(labels)))
+            acc_by_label = np.zeros(len(labels))
+            count_by_label = np.zeros(len(labels))
+            for data in loader:  #Iterate in batches over the  dataset
+                data = data.to(device) #Move data on device
+                features = model(data, data.batch) #Obtain predictions 
+                out = classifier(features) #Obtain predictions 
+                loss = criterion(out, data.y) 
+                loss_ += loss.item() #Update loss
+                pred = out.argmax(dim=1)  #Use the class with highest value as predicitons
+                #Update indexes and confusion matrix values
+                correct += int((pred == data.y).sum())
+                top_k += top_k_accuracy_score(data.y.cpu().numpy(), out.detach().cpu().numpy(), labels=labels, normalize=False, k=k)
+                conf_matr += confusion_matrix(data.y.cpu().numpy(),pred.cpu().numpy(), labels=labels)
+                
+                count_by_label += count_labels(data.y.cpu().numpy(), labels)
+                acc_by_label += count_matching_labels(data.y.cpu().numpy(), pred, labels)
+            acc_by_label = np.divide(acc_by_label, count_by_label, out=np.zeros_like(acc_by_label), where=count_by_label!=0)
+            return correct / len(loader.dataset), loss_ / len(loader.dataset), top_k / len(loader.dataset), conf_matr, sum(acc_by_label)/len(acc_by_label)  # Derive ratio of correct predictions.
+    
+    else:
+        #Training funtion
+        def train():
+            model.load_state_dict(torch.load(results_path+"/Model.pt")) #TODO handle import of the Model
+            model.eval()
+            classifier.train()
+            for data in train_loader:  #Iterate in batches over the training dataset.
+                loss=0  
+                optimizer.zero_grad()  #Clear gradients.            
+                batched_tokens=torch.empty((0)).to(device)
+                data = data.to(device)
+                #print(f'Data, {data}')
+                y = data.y
+                #print(f'y, {y}')
+                for graph in data.to_data_list():
+                    tokens = []
+                    #print(f'Listed data, {data}')
+                    windowed_data = windowing(graph, ntoken, token_overlap)
+                    #print(f'Windowed_data, {windowed_data}')
+                    for win_graph in windowed_data:
+                        representation = model(win_graph, win_graph.batch)
+                        tokens.append(representation)
+                        #print(f'Tokens, {tokens}') #Perform a single forward pass obtaining network output
+                    combined_tokens = torch.cat(tokens, dim=1)
+                    #print(f'Combined_Tokens, {combined_tokens}')
+                    #print(f'Combined_Tokens Size, {combined_tokens.size()}')
+                    batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
+                    #print(f'Batched_Tokens, {batched_tokens}')
+                    #print(f'Batched_Tokens Size, {batched_tokens.size()}')
+                out = classifier(batched_tokens)
+                loss = criterion(out, y) # Compute the loss.
+                loss.backward() #Derive gradients.
+                optimizer.step()  #Update parameters based on gradients.
+                
+        #Test function
+        def test(loader, labels,k):
+            model.eval()
+            classifier.eval()
+            #Initialize indexes and confusion matrix
+            correct = 0
+            loss_ = 0
+            top_k = 0
+            conf_matr = np.zeros((len(labels), len(labels)))
+            acc_by_label = np.zeros(len(labels))
+            count_by_label = np.zeros(len(labels))
+            for data in loader:  #Iterate in batches over the  dataset
+                loss=0
+                batched_tokens=torch.empty((0)).to(device)
+                data = data.to(device)
+                y = data.y
+                for graph in data.to_data_list():
+                    tokens = []
+                    windowed_data = windowing(graph, ntoken, token_overlap)
+                    for win_graph in windowed_data:
+                        tokens.append(model(win_graph, win_graph.batch)) #Perform a single forward pass obtaining network output
+                    combined_tokens = torch.cat(tokens, dim=1)
+                    batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
+                out = classifier(batched_tokens)
+                loss = criterion(out, y) 
+                loss_ += loss.item() #Update loss
+                pred = out.argmax(dim=1)  #Use the class with highest value as predicitons
+                #Update indexes and confusion matrix values
+                correct += int((pred == y).sum())
+                top_k += top_k_accuracy_score(y.cpu().numpy(), out.detach().cpu().numpy(), labels=labels, normalize=False, k=k)
+                conf_matr += confusion_matrix(y.cpu().numpy(),pred.cpu().numpy(), labels=labels)
+                
+                count_by_label += count_labels(y.cpu().numpy(), labels)
+                acc_by_label += count_matching_labels(y.cpu().numpy(), pred, labels)
 
-        acc_by_label = np.divide(acc_by_label, count_by_label, out=np.zeros_like(acc_by_label), where=count_by_label!=0)
-        return correct / len(loader.dataset), loss_ / len(loader.dataset), top_k / len(loader.dataset), conf_matr, sum(acc_by_label)/len(acc_by_label)  # Derive ratio of correct predictions.
+            acc_by_label = np.divide(acc_by_label, count_by_label, out=np.zeros_like(acc_by_label), where=count_by_label!=0)
+            return correct / len(loader.dataset), loss_ / len(loader.dataset), top_k / len(loader.dataset), conf_matr, sum(acc_by_label)/len(acc_by_label)  # Derive ratio of correct predictions.
    
     #Training loop
     #Initialize arrays for performances throuhg the epochs
