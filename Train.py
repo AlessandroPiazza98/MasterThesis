@@ -27,7 +27,6 @@ from itertools import groupby #Utilities to make group opeations
 
 os.environ["WANDB_SILENT"] = "true" #Don't want the classical verbose output of wandb
 
-
 #Setup Argument Parser
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--dataset", type=str, default="Babel") #The dataset considered for the computations Babel/NTU
@@ -40,7 +39,7 @@ parser.add_argument("-pt", "--train_test", type=float, default=0.7) #TODO Split 
 parser.add_argument("-bc", "--batch_size", type=int, default=32) #Batchsize considered (high vakues can give memory issue)
 parser.add_argument('-debug', action='store_true') #Activate debug mode that prints some useful information
 parser.add_argument("-tk", "--top_k", type=int, default=5) #Number of K considered for the computation of top K accuracy
-parser.add_argument("-rp", "--results_path", type=str, default="/home/ale_piazza/MasterThesis/Plot") #Path in which plots are exported
+parser.add_argument("-rp", "--results_path", type=str, default="/home/ale_piazza/MasterThesis/Results") #Path in which plots are exported
 parser.add_argument("-wk", "--wandb_key", type=str, default="") #API key for wandb. If not inserted nothing is exported.
 parser.add_argument('-m', "--model", type=str, default="GCN") #Model to consider: the string must match with one of the keys of Models.models_map
 parser.add_argument('-l', "--loss", type=str, default="CE") #Loss function
@@ -51,6 +50,11 @@ parser.add_argument('-re', "--regularization", type=float, default=0.00001) #Wei
 parser.add_argument('-nt', "--ntoken", type=int, default=10) #Hidden layers if requested
 parser.add_argument('-to', "--token_overlap", type=int, default=4) #Hidden layers if requested
 parser.add_argument('-learn_features', action='store_true') #Activate debug mode that prints some useful information
+parser.add_argument('-id', "--model_id", type=str) #Model to consider: the string must match with one of the keys of Models.models_map
+parser.add_argument('-cl', "--classifier", type=str, default="Classifier") #Model to consider: the string must match with one of the keys of Models.models_map
+parser.add_argument('-nh', "--nhead", type=int, default=8) #Model to consider: the string must match with one of the keys of Models.models_map
+parser.add_argument('-en', "--encoder_layers", type=int, default=6) #Model to consider: the string must match with one of the keys of Models.models_map
+parser.add_argument('-ff', "--feedforward", type=int, default=2048) #Model to consider: the string must match with one of the keys of Models.models_map
 
 args = parser.parse_args() #Initialize parser
 
@@ -76,7 +80,12 @@ print(tabulate.tabulate([
                 ["Regularization",args.regularization], 
                 ["Token per graph",args.ntoken],  
                 ["Token overlap",args.token_overlap],  
-                ["Learn Features", args.debug],                       
+                ["Learn Features", args.learn_features],     
+                ["Model ID", args.model_id], 
+                ["Classifier", args.classifier],
+                ["N Head", args.nhead],
+                ["Encoder Layers", args.encoder_layers],
+                ["Dim FeedForward", args.feedforward],                 
                 ], headers=['Argument', 'Value']))
 print()
 
@@ -105,10 +114,19 @@ if __name__ == "__main__":
     reg = args.regularization
     ntoken = args.ntoken
     token_overlap = args.token_overlap
+    learn_features = args.learn_features
+    model_id = args.model_id
+    typeClassifier = args.classifier
+    nhead = args.nhead
+    num_encoder_layers = args.encoder_layers
+    dim_feedforward = args.feedforward
+
+
 
     tz = datetime.timezone.utc
     ft = "%Y-%m-%dT%H:%M:%S%z"
     now = datetime.datetime.now(tz=tz).strftime(ft) #Create datetime reference for the start of the computation
+
 
 
     #Use CUDA if available, otherwise selected device and print where the experiments will run
@@ -116,10 +134,12 @@ if __name__ == "__main__":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("Experiments will run using "+str(device)+" on "+str(torch.cuda.get_device_name(device))) 
     else:
-        device = torch.device(args.device)
         if args.device == "cpu":
+            device = torch.device("cpu")
             print("Experiments will run using "+str(device))
         else:
+            device = torch.device("cuda")
+            os.environ["CUDA_VISIBLE_DEVICES"] = vis_dev = args.device.split(':')[1]
             print("Experiments will run using "+str(device)+" on "+str(torch.cuda.get_device_name(device)))
 
     #Load Training Set from pickle file
@@ -189,12 +209,15 @@ if __name__ == "__main__":
                 print(weight_dict)
     #Define your model and optimizer, taking the model from the models_map dictionary on Models.py 
     MODELS_MAP = model_feat_map(input_dim, output_dim, edge_dim, device, hidden, dropout) # type: ignore
+    CLASSIFIER_MAP = classifier_map(output_dim, device, hidden, dropout, ntoken, nhead, num_encoder_layers, dim_feedforward)
     model = MODELS_MAP[model_key]
-    if args.learn_features:
-        classifier = Classifier(output_dim, hidden, dropout).to(device)
+    if learn_features:
+        classifier = CLASSIFIER_MAP["Classifier"]
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=reg) #TODO go in deeper details for optimizer
     else:
-        classifier = ClassifierWin(output_dim, hidden, ntoken, dropout).to(device)
-    optimizer = torch.optim.Adam(list(model.parameters()) + list(classifier.parameters()), lr=lr, weight_decay=reg) #TODO go in deeper details for optimizer
+        classifier = CLASSIFIER_MAP[typeClassifier]
+        optimizer = torch.optim.Adam(classifier.parameters(), lr=lr, weight_decay=reg) #TODO go in deeper details for optimizer
+
     #Select different criterions only if size is Full to avoid mismatch in the number of labels
     if args.data_size == "Full":
         criterion = select_loss(loss_key, class_w)
@@ -203,9 +226,9 @@ if __name__ == "__main__":
 
     #Print the size of the data after each layer in the network, making a batch to pass through a model identical to the one that will be trained
     if args.debug:
-        if args.learn_features:
+        if learn_features:
             model_debug = MODELS_MAP[model_key]
-            classifier_debug = Classifier(output_dim, hidden, ntoken, dropout).to(device)
+            classifier_debug = CLASSIFIER_MAP["Classifier"]
             model_debug.train()
             data = next(iter(train_loader)) #Pick a single batch
             print("\nThe debugging batch has this shape:")
@@ -215,11 +238,11 @@ if __name__ == "__main__":
             tokens = []
             data = data.to(device)
             features = model_debug(data, data.batch) #Perform a single forward pass obtaining network output
-            out = classifier(features)
+            out = classifier_debug(features)
             print("\n##### DEBUG MODE OFF #####\n")
         else:
             model_debug = MODELS_MAP[model_key]
-            classifier_debug = ClassifierWin(output_dim, hidden, ntoken, dropout).to(device)
+            classifier_debug = CLASSIFIER_MAP[typeClassifier]
             model_debug.train()
             data = next(iter(train_loader)) #Pick a single batch
             print("\nThe debugging batch has this shape:")
@@ -231,7 +254,10 @@ if __name__ == "__main__":
             windowed_data = windowing(data, ntoken, token_overlap)
             for data in windowed_data:
                 tokens.append(model_debug(data, data.batch, debug=args.debug)) #Perform a single forward pass obtaining network output
-            combined_tokens = torch.cat(tokens, dim=1)
+            if typeClassifier !="Transformer":
+                combined_tokens = torch.cat(tokens, dim=1)
+            else:
+                combined_tokens = torch.cat(tokens, dim=0).unsqueeze(0)
             out = classifier_debug(combined_tokens, debug=args.debug)
             
 
@@ -263,10 +289,11 @@ if __name__ == "__main__":
             }
         )
 
-    if args.learn_features:
+    if learn_features:
             #Training function
         def train():
             model.train()
+            classifier.train()
             for data in train_loader:  #Iterate in batches over the training dataset.  
                 optimizer.zero_grad()  #Clear gradients.
                 data = data.to(device)
@@ -275,10 +302,11 @@ if __name__ == "__main__":
                 loss = criterion(out, data.y)  # Compute the loss.
                 loss.backward()  #Derive gradients.
                 optimizer.step()  #Update parameters based on gradients.
-            torch.save(model.state_dict(), results_path+"/Model.pt") #TODO handle export of the Model
+
         #Test function
         def test(loader, labels,k):
             model.eval()
+            classifier.eval()
             #Initialize indexes and confusion matrix
             correct = 0
             loss_ = 0
@@ -305,33 +333,28 @@ if __name__ == "__main__":
     
     else:
         #Training funtion
+        model.load_state_dict(torch.load(results_path+"/Model"+model_id+".pt"))
         def train():
-            model.load_state_dict(torch.load(results_path+"/Model.pt")) #TODO handle import of the Model
+            #TODO handle import of the Model
             model.eval()
             classifier.train()
             for data in train_loader:  #Iterate in batches over the training dataset.
-                loss=0  
-                optimizer.zero_grad()  #Clear gradients.            
+                optimizer.zero_grad()  #Clear gradients.    
                 batched_tokens=torch.empty((0)).to(device)
                 data = data.to(device)
-                #print(f'Data, {data}')
-                y = data.y
-                #print(f'y, {y}')
+                y = data.y.to(device)
                 for graph in data.to_data_list():
                     tokens = []
-                    #print(f'Listed data, {data}')
                     windowed_data = windowing(graph, ntoken, token_overlap)
-                    #print(f'Windowed_data, {windowed_data}')
                     for win_graph in windowed_data:
                         representation = model(win_graph, win_graph.batch)
                         tokens.append(representation)
-                        #print(f'Tokens, {tokens}') #Perform a single forward pass obtaining network output
-                    combined_tokens = torch.cat(tokens, dim=1)
-                    #print(f'Combined_Tokens, {combined_tokens}')
-                    #print(f'Combined_Tokens Size, {combined_tokens.size()}')
-                    batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
-                    #print(f'Batched_Tokens, {batched_tokens}')
-                    #print(f'Batched_Tokens Size, {batched_tokens.size()}')
+                    if typeClassifier !="Transformer":
+                        combined_tokens = torch.cat(tokens, dim=1)
+                        batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
+                    else:
+                        combined_tokens = torch.cat(tokens, dim=0).unsqueeze(0)
+                        batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
                 out = classifier(batched_tokens)
                 loss = criterion(out, y) # Compute the loss.
                 loss.backward() #Derive gradients.
@@ -348,31 +371,35 @@ if __name__ == "__main__":
             conf_matr = np.zeros((len(labels), len(labels)))
             acc_by_label = np.zeros(len(labels))
             count_by_label = np.zeros(len(labels))
-            for data in loader:  #Iterate in batches over the  dataset
-                loss=0
-                batched_tokens=torch.empty((0)).to(device)
-                data = data.to(device)
-                y = data.y
-                for graph in data.to_data_list():
-                    tokens = []
-                    windowed_data = windowing(graph, ntoken, token_overlap)
-                    for win_graph in windowed_data:
-                        tokens.append(model(win_graph, win_graph.batch)) #Perform a single forward pass obtaining network output
-                    combined_tokens = torch.cat(tokens, dim=1)
-                    batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
-                out = classifier(batched_tokens)
-                loss = criterion(out, y) 
-                loss_ += loss.item() #Update loss
-                pred = out.argmax(dim=1)  #Use the class with highest value as predicitons
-                #Update indexes and confusion matrix values
-                correct += int((pred == y).sum())
-                top_k += top_k_accuracy_score(y.cpu().numpy(), out.detach().cpu().numpy(), labels=labels, normalize=False, k=k)
-                conf_matr += confusion_matrix(y.cpu().numpy(),pred.cpu().numpy(), labels=labels)
-                
-                count_by_label += count_labels(y.cpu().numpy(), labels)
-                acc_by_label += count_matching_labels(y.cpu().numpy(), pred, labels)
+            with torch.no_grad():
+                for data in loader:  #Iterate in batches over the  dataset
+                    batched_tokens=torch.empty((0)).to(device)
+                    data = data.to(device)
+                    y = data.y
+                    for graph in data.to_data_list():
+                        tokens = []
+                        windowed_data = windowing(graph, ntoken, token_overlap)
+                        for win_graph in windowed_data:
+                            tokens.append(model(win_graph, win_graph.batch)) #Perform a single forward pass obtaining network output
+                        if typeClassifier !="Transformer":
+                            combined_tokens = torch.cat(tokens, dim=1)
+                            batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
+                        else:
+                            combined_tokens = torch.cat(tokens, dim=0).unsqueeze(0)
+                            batched_tokens = torch.cat([batched_tokens, combined_tokens], dim=0)
+                    out = classifier(batched_tokens)
+                    loss = criterion(out, y) 
+                    loss_ += loss.item() #Update loss
+                    pred = out.argmax(dim=1)  #Use the class with highest value as predicitons
+                    #Update indexes and confusion matrix values
+                    correct += int((pred == y).sum())
+                    top_k += top_k_accuracy_score(y.cpu().numpy(), out.detach().cpu().numpy(), labels=labels, normalize=False, k=k)
+                    conf_matr += confusion_matrix(y.cpu().numpy(),pred.cpu().numpy(), labels=labels)
+                    
+                    count_by_label += count_labels(y.cpu().numpy(), labels)
+                    acc_by_label += count_matching_labels(y.cpu().numpy(), pred, labels)
 
-            acc_by_label = np.divide(acc_by_label, count_by_label, out=np.zeros_like(acc_by_label), where=count_by_label!=0)
+                acc_by_label = np.divide(acc_by_label, count_by_label, out=np.zeros_like(acc_by_label), where=count_by_label!=0)
             return correct / len(loader.dataset), loss_ / len(loader.dataset), top_k / len(loader.dataset), conf_matr, sum(acc_by_label)/len(acc_by_label)  # Derive ratio of correct predictions.
    
     #Training loop
@@ -387,6 +414,8 @@ if __name__ == "__main__":
     for epoch in range(1,num_epochs+1):
         #Train the model
         train()
+        if learn_features:
+            torch.save(model.state_dict(), results_path+"/Model"+model_id+".pt")
 
         #Test the model on training and validation set
         train_acc, train_loss, train_top_k, train_conf_matr, train_top_1_norm = test(train_loader, labels, top_k)

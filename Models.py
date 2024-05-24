@@ -11,10 +11,15 @@ import torch_geometric.utils
 from torch_geometric.nn import GENConv, global_mean_pool, global_add_pool, global_max_pool, SAGPooling, TopKPooling, GCNConv
 from torch_geometric.data import Data
 import torch_geometric.transforms as T
+import math
 
 from loguru import logger
+import sys
 
 #Starting Graph Convolutional Network with GENConv layers
+logger.remove()
+logger.add(sys.stderr, level="INFO")
+
 
 def model_feat_map(input_dim, output_dim, edge_dim, device, hidden, dropout): 
     dict = {'GCN':GCN(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device),
@@ -23,6 +28,13 @@ def model_feat_map(input_dim, output_dim, edge_dim, device, hidden, dropout):
             'SAGPool':SAGPool(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim).to(device),
             'GCN2':GCN2(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim, hidden=hidden, dropout=dropout).to(device),
             'GCNSAG':GCN2(in_dim = input_dim, out_dim = output_dim, edge_dim=edge_dim, hidden=hidden, dropout=dropout).to(device)}
+    return dict
+
+def classifier_map(output_dim, device, hidden, dropout, ntoken, nhead, num_encoder_layers, dim_feedforward): 
+    dict = {'Classifier':Classifier(output_dim, hidden, dropout).to(device),
+            'ClassifierWin':ClassifierWin(output_dim, hidden, ntoken, dropout).to(device),
+            'Transformer':TransformerAndClassifier(d_model= hidden*4, nhead= nhead, num_encoder_layers= num_encoder_layers, dim_feedforward= dim_feedforward, dropout= dropout,
+                                                    max_len= 5000, classifier_layer_size= 64, batch_first=True, classes=output_dim, norm_first=False).to(device)}
     return dict
 
 def debug_p(string, debug):
@@ -540,7 +552,7 @@ class TransformerAndClassifier(nn.Module):
                                        max_len, batch_first, norm_first)
         self.classifier = ClassifierHead(d_model, classes, dropout=dropout, linear_size=classifier_layer_size)
 
-    def forward(self, x):
+    def forward(self, x, debug=False):
         cls_token = self.transformer(x)
         x = self.classifier(cls_token)
         return x
@@ -610,6 +622,7 @@ class Transformer(nn.Module):
                 src_key_padding_mask: torch.Tensor = None, ) -> torch.Tensor:
         # cls_token = torch.randn((x.shape[0], 1, x.shape[-1]), device=x.device)
         # tokens = torch.column_stack((cls_token, x))
+        
         logger.debug(f'Transformer input shape: {src.shape}')
         logger.debug(
             f'Transformer input min: {torch.min(src)}, max: {torch.max(src)}, mean: {torch.mean(src)}, std: {torch.std(src)}')
