@@ -68,9 +68,9 @@ BATCH_SIZE=("16")
 TOP_K=("5")
 RESULTS_PATH="/home/ale_piazza/MasterThesis/Results"
 WANDB_KEY="5296fdee5335cb67e4fc2e0feb6985ed78cca00a"
-MODEL=("GAE" "GCN")
+MODEL=("GCN")
 LOSS=("CE")
-LEARN_RATE=("0.0001")
+LEARN_RATE=("0.001")
 HIDDEN=("32" "64" "128")
 DROPOUT=("0.1")
 REGULARIZATION=("0.000000001")
@@ -112,7 +112,7 @@ for dataset in "${DATASET[@]}"; do
                                           for learn_tokens in "${LEARN_TOKENS[@]}"; do
                                             for patience in "${PATIENCE[@]}"; do
                                               # Construct model_id
-                                              MODEL_ID="${MODEL_ID_PREFIX}${MODEL_ID}"
+                                              MODEL_ID="${MODEL_ID_PREFIX}"
                                               launch_script "$PYTHON_PATH" "$SCRIPT_PATH" "$dataset" "$classes" "$data_size" "$DATA_PATH" "$epochs" "$device" "$train_test" "$batch_size" "$top_k" "$RESULTS_PATH" "$WANDB_KEY" "$model" "$loss" "$learn_rate" "$hidden" "$dropout" "$regularization" "$ntoken" "$token_overlap" "$learn_features" "$MODEL_ID" "$classifier" "$nhead" "$encoder_layers" "$feedforward" "$learn_tokens" "$patience"
                                             done
                                           done
