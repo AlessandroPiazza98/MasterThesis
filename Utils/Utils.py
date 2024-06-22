@@ -73,7 +73,7 @@ def count_matching_labels(arr1, arr2, total_labels):
     label_occurrences = [label_counts.get(i, 0) for i in total_labels]
     return label_occurrences
 
-def win_split(data, a, b):
+def win_split(data, a, b, device): #TODO
     kpts=25
     x = data.x[a*kpts:(b+1)*kpts,:]
 
@@ -85,10 +85,10 @@ def win_split(data, a, b):
     edge_attr = data.edge_attr[mask]
     y = data.y
 
-    data_out = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+    data_out = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, batch=torch.zeros(x.shape[0], dtype=torch.int64).to(device))
     return data_out
 
-def windowing(data, k, overlap=0):
+def windowing(data, k, device, overlap=0): #TODO
     kpts = 25
     windowed_data = []
     frames = int((len(data.x)/kpts)/k)
@@ -101,5 +101,5 @@ def windowing(data, k, overlap=0):
             b = frames*(i+1)
         else:
             b = frames*(i+1)+int(overlap/2)
-        windowed_data.append(win_split(data, a, b))
+        windowed_data.append(win_split(data, a, b, device))
     return windowed_data
